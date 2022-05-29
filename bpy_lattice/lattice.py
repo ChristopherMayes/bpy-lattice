@@ -390,7 +390,7 @@ def ele_object(ele, library, use_real_model=False, catalogue=None, hide_real_mod
     object.location = (0, 0, 0) 
     bfile=blendfile(ele)
     if bfile and use_real_model and catalogue:
-        f=os.path.join(catalogue, file)
+        f=os.path.join(catalogue, bfile)
         if os.path.isfile(f):
             print('blend file: ', f, 'exists!')
             add_children_from_blend(object, f, library)
