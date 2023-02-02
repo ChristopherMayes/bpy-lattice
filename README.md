@@ -6,10 +6,12 @@ Extensions to Blender to draw accelerator lattices
 
 Blender ships with its own Python. On macOS, this is in a place like:
 
-`/Applications/Blender.app/Contents/Resources/3.1/python/bin/python3.10`
+`/Applications/Blender.app/Contents/Resources/3.4/python/bin/python3.10`
 
-Developers can install using pip and the editable flag:
+Most users should install the latest release through PyPI:
+`/Applications/Blender.app/Contents/Resources/3.4/python/bin/python3.10 -m pip install bpy-lattice`
 
+Developers can clone this repository and install using pip and the editable flag:
 `/Applications/Blender.app/Contents/Resources/3.1/python/bin/python3.10 -m pip install -e .`
 
 
