@@ -47,7 +47,7 @@ def map_table_dict(line):
     if d['key']=='WIGGLER':
         d['radius_x'] =  float(vals[10])  
         d['radius_y'] =  float(vals[11])
-        d['xray_line_len'] =  float(vals[12])          
+        #d['xray_line_len'] =  float(vals[12])          
     d['descrip'] = vals[13]  
     return d
 
@@ -294,6 +294,8 @@ def pipe_object(ele):
     bpy.context.collection.objects.link(object)
     #punch_hole(object,object0)
     
+    ## TEMP
+    return object
     
     slicer.slice_object(object,object0)
     
