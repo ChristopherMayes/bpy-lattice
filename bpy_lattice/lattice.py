@@ -231,7 +231,7 @@ def ele_mesh(ele):
     #print('mesh update')
     mesh.update(calc_edges=True)
     #print('calc_normals')
-    mesh.calc_normals()
+    #mesh.calc_normals()
     #print('calc_normals DONE')
     return mesh
 
