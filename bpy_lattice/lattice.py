@@ -70,6 +70,7 @@ ELE_X_SCALE_FACTOR = 50
 
 
 ELE_X_SCALE = {
+    'MARKER' :0.001,
     'E_GUN' :0.4,
     'PIPE': 0.01, 
     'DRIFT': 0.01,
@@ -209,7 +210,7 @@ def ele_section(s_rel, ele):
 def ele_mesh(ele):
     name = ele['name']
     print('Mesh: ', name)
-    L = ele['L']
+    L = ele['L']        
     if ele['key'] == 'SBEND':
         n=20
         slist = [L*i/(n-1) - L/2 for i in range(n)]
@@ -427,15 +428,23 @@ def ele_objects(eles,
     """
     Create multiple objects from a list of eles (a lattice)
     """
-
+    print("here 2")
     Xcenter, Ycenter, Zcenter = origin
 
 
 
     objects = []
     for ele in eles:
+        
         if ele['L'] == 0:
-            continue
+            if ele['key'] == 'MARKER':
+                ele['L'] = 1e-3 
+            else:
+                continue
+        
+            
+
+        
         ob = ele_object(ele, library=library, use_real_model=use_real_model, hide_real_model=hide_real_model, catalogue =catalogue )
     
         # Set location and angles 
