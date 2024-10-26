@@ -38,6 +38,6 @@ Note that older installation methods no longer work.
 
 ## Usage
 
-Open Blender, and choose the scripting tab. 
+Open Blender, and choose the scripting tab.
 
 Paste the contents of `scripts/make_lattice.py` in the editor. Edit to point to a valid `.layout_table` file, and run the script.

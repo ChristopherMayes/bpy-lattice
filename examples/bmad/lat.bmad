@@ -1,8 +1,8 @@
 parameter[lattice] = "test lattice"
 parameter[geometry] = open
- 
+
 parameter[e_tot] = 10e6
-parameter[particle]               = ELECTRON        
+parameter[particle]               = ELECTRON
 parameter[absolute_time_tracking] = F
 
 
@@ -29,7 +29,3 @@ cav2[descrip] = "test descrip"
 lat: line = (p1, b1, p2, cav1, b2, cav2, m1)
 
 use, lat
-
-
-
-

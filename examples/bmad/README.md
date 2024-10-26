@@ -1,5 +1,5 @@
 
-Create lat.layout table by running `bmad_to_blender` in this direcory. This will read `lat.bmad` and create `lat.layout_table`. 
+Create lat.layout table by running `bmad_to_blender` in this direcory. This will read `lat.bmad` and create `lat.layout_table`.
 
 This should do:
 ```bash

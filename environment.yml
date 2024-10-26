@@ -17,5 +17,5 @@ dependencies:
   - mkdocstrings-python
   - pip
   - pip:
-    - mkdocstrings-python  
+    - mkdocstrings-python
     - bpy
