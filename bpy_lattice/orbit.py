@@ -6,12 +6,10 @@ from bpy_lattice import materials
 
 
 def import_orbit(file):
-    f = open(file, 'r')
-    header1=f.readline()
-    header2=f.readline()
-    print(header1)
-    orbit = [parse_orbit_line(line) for line in f]
-    f.close()
+    with open(file, 'r') as f:
+        print(next(f))  # Print the first header line
+        next(f)  # Skip the second header line
+        orbit = [parse_orbit_line(line) for line in f]
     return orbit
 
 def parse_orbit_line(line):
@@ -116,7 +114,7 @@ def orbit_material(orbit):
 
 
 
-def orbit_object(orbit, name:"test", beam=None):
+def orbit_object(orbit, name="test", beam=None):
     mesh = orbit_mesh(orbit, name, beam=beam)
     object = bpy.data.objects.new(name, mesh)
     bpy.context.scene.objects.link(object)
@@ -130,10 +128,10 @@ def orbit_object(orbit, name:"test", beam=None):
 
     #bpy.context.scene.objects.link(object)
 
-def chunks(l, n):
-    """Yield successive n-sized chunks from l."""
-    for i in range(0, len(l), n):
-        yield l[i:i + n]
+def chunks(iterable, n):
+    """Yield successive n-sized chunks from an iterable."""
+    for i in range(0, len(iterable), n):
+        yield iterable[i:i + n]
 
 
 

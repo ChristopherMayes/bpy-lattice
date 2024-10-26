@@ -16,7 +16,7 @@ def emission_material(name, strength=50):
     node_output = nodes.new(type='ShaderNodeOutputMaterial')    
     node_output.location = 400,0
     links = mat.node_tree.links
-    link = links.new(node_output.inputs[0],node.outputs[0])  
+    links.new(node_output.inputs[0],node.outputs[0])  
     return mat
   
 def diffuse_material(name, color=(1,0,0,1)):
@@ -33,7 +33,7 @@ def diffuse_material(name, color=(1,0,0,1)):
     node_output = nodes.new(type='ShaderNodeOutputMaterial')    
     node_output.location = 400,0
     links = mat.node_tree.links
-    link = links.new(node_output.inputs[0],node.outputs[0])    
+    links.new(node_output.inputs[0],node.outputs[0])    
     return mat
   
 LIGHT_MATERIAL=emission_material('light', strength=100)

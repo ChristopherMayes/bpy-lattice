@@ -3,7 +3,8 @@ import bpy
 from mathutils import Matrix
 
 def slice_object(object, punch, use_ops_method=False):
-    if object.type != 'MESH': return
+    if object.type != 'MESH':
+        return
     print('slicing', object.name, 'with',punch.name)
     if object == punch:
         print(object.name, punch.name)
@@ -60,7 +61,8 @@ def slice_all():
     #olist = [o for o in bpy.data.objects]
     #olist = [myo]
     for o in olist:
-        if o == punch: continue
+        if o == punch: 
+            continue
         print(o.name, i, '/', imax)
         slice_object(o, punch)
         i = i + 1    

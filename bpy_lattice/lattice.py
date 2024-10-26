@@ -59,10 +59,9 @@ def blendfile(ele):
         return None
 
 def import_lattice(file):
-    f = open(file, 'r')
-    header=f.readline()
-    lat = [map_table_dict(line) for line in f]
-    f.close()
+    with open(file, 'r') as f:
+        next(f)  # Skip the header line
+        lat = [map_table_dict(line) for line in f]
     return lat
 
 
@@ -125,9 +124,6 @@ def ele_color(ele):
         color  = ELE_COLOR[key]
 
     return color
-
-def ele_section():
-    return 0
     
 def faces_from(sections, closed=True):
     """
@@ -261,18 +257,6 @@ def new_ellipse(radius_x=1, radius_y=1, length=1, vertices=32):
     
     return ob
 
-def old_new_pipe(name = 'pipe', length=1, radius_x=0.1, radius_y=1, material=None, thickness = 0.01):
-    #pipe = new_ellipse(radius_x=radius_x + thickness, radius_y=radius_y+ thickness, length=length, vertices=64)
-    #pipe.name = name
-    #aperture = new_ellipse(radius_x=radius_x, radius_y=radius_y, length=length, vertices=32)
-    #punch_hole(pipe, aperture)
-    #bpy.context.scene.objects.active = aperture
-    #bpy.ops.object.delete()
-    #rotate_mesh(pipe.data)
-    if material:
-        pipe.data.materials.append(material)
-    return pipe
-
 def pipe_object(ele):
     print('pipe_object')
     ele0 = ele.copy()
@@ -349,7 +333,7 @@ def add_children_from_blend(parent, blendfilepath, libdict):
     for child in children:
         #bpy.context.scene.objects.link(child) OLD blender
         bpy.context.collection.objects.link(child)
-        if child.parent == None:
+        if child.parent is None:
             child.parent = parent         
 
 
@@ -465,9 +449,6 @@ def lat_borders(lat, dim='x'):
   
 def test():
     ele = {'name':'test_pipe', 'radius_x': 0.2, 'radius_y': 0.1, 'thickness':0.01, 'L': 1, 'key':'PIPE', 'descrip':''}
-    o = ele_object(ele, None)
+    ele_object(ele, None)
   
-
-if __name__ == '__main__':
-  test()
 
