@@ -17,6 +17,7 @@ classifiers = [
 ]
 dependencies = [
   "numpy>=2",
+  "bpy",
 ]
 description = "Tools for creating particle accelerator models in Blender"
 dynamic = [ "version" ]
