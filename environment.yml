@@ -3,7 +3,7 @@ name: bpy_lattice-dev
 channels:
   - conda-forge
 dependencies:
-  - python>=3.9
+  - python==3.11 # Required for latest Blender
   - numpy>2
   # Developer
   - pytest
@@ -17,5 +17,5 @@ dependencies:
   - mkdocstrings-python
   - pip
   - pip:
-      - mkdocstrings-python  
-      -bpy
+    - mkdocstrings-python  
+    - bpy
