@@ -1,7 +1,6 @@
 import bpy
 
-from mathutils import Vector, Matrix
-from math import pi
+from mathutils import Matrix
 
 def slice_object(object, punch, use_ops_method=False):
     if object.type != 'MESH': return

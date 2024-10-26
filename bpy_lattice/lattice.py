@@ -1,9 +1,9 @@
 import bpy
 import bmesh
-import os, sys
+import os
 import re
 from mathutils import Matrix, Vector
-from math import sin, cos, pi, sqrt
+from math import sin, cos, pi
 
 
 from bpy_lattice import slicer

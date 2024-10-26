@@ -1,6 +1,6 @@
 
 import bpy
-from math import sin, cos, pi, sqrt
+from math import pi, sqrt
 
 
 def camera_at(d):
