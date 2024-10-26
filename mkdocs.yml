@@ -5,7 +5,7 @@ repo_name: ChristopherMayes/bpy-lattice
 nav:
   - Home: index.md
   - Examples:
-    - test.ipynb
+    - examples/test.ipynb
 
 theme:
   icon:
