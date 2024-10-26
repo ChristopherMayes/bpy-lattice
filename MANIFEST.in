@@ -1,4 +1,1 @@
-include README.md
-include LICENSE.txt
-include requirements.txt
-include setup.py
+include LICENSE

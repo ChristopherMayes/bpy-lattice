@@ -82,4 +82,3 @@ fi
 eval $INSTALL_COMMAND
 
 echo "Custom Python package installed into: $MODULES_PATH"
-

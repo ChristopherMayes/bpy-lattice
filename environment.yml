@@ -1,0 +1,21 @@
+# conda env create -f environment.yml
+name: bpy_lattice-dev
+channels:
+  - conda-forge
+dependencies:
+  - python==3.11 # Required for latest Blender
+  - numpy>2
+  # Developer
+  - pytest
+  - pytest-cov
+  - jupyterlab>=3
+  - pygments
+  - mkdocs==1.5.2
+  - mkdocstrings
+  - mkdocs-material
+  - mkdocs-jupyter==0.24.6
+  - mkdocstrings-python
+  - pip
+  - pip:
+    - mkdocstrings-python
+    - bpy
