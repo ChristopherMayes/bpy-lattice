@@ -4,7 +4,7 @@ import os
 import re
 from mathutils import Matrix, Vector
 from math import sin, cos, pi
-
+from typing import Tuple, Optional
 
 from bpy_lattice import slicer
 from bpy_lattice import materials
@@ -297,25 +297,31 @@ def old_fix_mesh(object):
 
 
 def ele_object(
-    ele, library, use_real_model=False, catalogue=None, hide_real_model=True
+    ele, 
+    library: dict = {},
+    use_real_model: bool = False,
+    catalogue: Optional[str] = None,
+    hide_real_model: bool = True,
 ):
-    name = ele["name"]
-    print("Object: ", name)
+    print("Object: ", ele["name"])
+    
+    # Generate the "simple" model
     if ele["key"] == "PIPE" and ele["thickness"] > 0 and ele["radius_x"] > 0:
         object = pipe_object(ele)
     else:
         mesh = ele_mesh(ele)
-        object = bpy.data.objects.new(name, mesh)
-        # bpy.context.scene.objects.link(object) old blender
+        object = bpy.data.objects.new(ele["name"], mesh)
         bpy.context.collection.objects.link(object)
-
     object.location = (0, 0, 0)
+    
+    # Load blender model of element
     bfile = blendfile(ele)
     if bfile and use_real_model and catalogue:
         f = os.path.join(catalogue, bfile)
         if os.path.isfile(f):
             print("blend file: ", f, "exists!")
             add_children_from_blend(object, f, library)
+
             # Hide options for preview
             if hide_real_model:
                 for c in object.children:
@@ -334,12 +340,12 @@ def ele_object(
 
 
 def ele_objects(
-    eles,
-    library={},
-    use_real_model=False,
-    catalogue=None,
-    hide_real_model=True,
-    origin=(0, 0, 0),
+    eles: list,
+    library: dict = {},
+    use_real_model: bool = False,
+    catalogue: Optional[str] = None,
+    hide_real_model: bool = True,
+    origin: Tuple[float, float, float] = (0, 0, 0),
 ):
     """
     Create multiple objects from a list of eles (a lattice)
