@@ -10,8 +10,6 @@ from bpy_lattice import slicer
 from bpy_lattice import materials
 from .constants import ELE_COLOR, ELE_X_SCALE, ELE_X_SCALE_FACTOR
 
-# bpy.context.scene.render.engine = 'CYCLES'
-
 
 def ele_material(ele):
     key = ele["key"]
@@ -25,7 +23,6 @@ def map_table_dict(line):
     print("map_table_dict: ", line)
     d = {}
     vals = line.split(",")[0:14]
-    # d['layer']  = vals[0].strip()
     d["name"] = vals[0].strip()
     d["index"] = int(vals[1])
     d["x"] = float(vals[2])
@@ -47,7 +44,6 @@ def map_table_dict(line):
     if d["key"] == "WIGGLER":
         d["radius_x"] = float(vals[10])
         d["radius_y"] = float(vals[11])
-        # d['xray_line_len'] =  float(vals[12])
     d["descrip"] = vals[13]
     return d
 
@@ -111,7 +107,6 @@ def faces_from(sections, closed=True):
             )
         faces.append((i0 * n + n - 1, (i0 + 1) * n + n - 1, (i0 + 1) * n, i0 * n))
     if closed:
-        # faces.append(range(n)) #first section
         faces.append(list(reversed(range(n))))  # first section
         faces.append(
             range((len(sections) - 1) * n, (len(sections) - 1) * n + n)
@@ -162,7 +157,6 @@ def ele_section(s_rel, ele):
         m1 = Matrix.Translation((0, rho, 0))
         m2 = Matrix.Rotation(-s_rel / rho, 4, "Z")
         m3 = Matrix.Translation((0, -rho, 0))
-        # m=m3*m2*m1*m0 Old syntax
         m = m3 @ m2 @ m1 @ m0
         sec = []
         for p in s0:
@@ -202,24 +196,11 @@ def ele_mesh(ele):
 
     mesh = bpy.data.meshes.new(name)
     mesh.from_pydata(verts, [], faces)
-    # Fix normals
-    # bpy.ops.object.editmode_toggle()
-    # bpy.ops.mesh.normals_make_consistent(inside=False)
-    # bpy.ops.object.editmode_toggle()
-    # print('mesh update')
     mesh.update(calc_edges=True)
-    # print('calc_normals')
-    # mesh.calc_normals()
-    # print('calc_normals DONE')
     return mesh
 
 
 # ------ Pipe stuff
-
-
-# basic pipe:
-# ele = {'name':'xxx', 'L':0.1, 'key':'PIPE', 'radius_x':0.3, 'radius_y':0.3, 'thickness':0.01}
-
 
 def rotate_mesh(mesh, mat=Matrix.Rotation(pi / 2, 4, "Y")):
     for v in mesh.vertices:
@@ -230,14 +211,10 @@ def new_ellipse(radius_x=1, radius_y=1, length=1, vertices=32):
     bpy.ops.mesh.primitive_cylinder_add(
         radius=radius_x, depth=length, vertices=vertices
     )
-    # bpy.ops.transform.rotate(value=pi/2, axis=(0, 1, 0))
     ob = bpy.context.scene.objects.active
     mesh = ob.data
     for v in mesh.vertices:
         v.co[0] *= radius_y / radius_x
-
-    # ob.rotation_euler[1] = pi/2 # Align to x-axis
-
     return ob
 
 
@@ -246,7 +223,6 @@ def pipe_object(ele):
     ele0 = ele.copy()
     ele0["thickness"] = 0
     ele0["L"] = ele["L"] * 1.1  # the punch needs to be slightly longer to work
-    # ele['thickness']  = 0.2
     mesh0 = ele_mesh(ele0)
     mesh = ele_mesh(ele)
     print("pipe mesh vertices: ", len(mesh0.vertices), len(mesh.vertices))
@@ -257,31 +233,10 @@ def pipe_object(ele):
     object = bpy.data.objects.new(ele["name"], mesh)
 
     # add to scene to
-    # bpy.context.scene.objects.link(object0)
-    # bpy.context.scene.objects.link(object)
     bpy.context.collection.objects.link(object0)
     bpy.context.collection.objects.link(object)
-    # punch_hole(object,object0)
 
-    ## TEMP
     return object
-
-    slicer.slice_object(object, object0)
-
-    # o = bpy.data.objects['xxx']
-    # p = bpy.data.objects['dummy']
-    # slice.slice(o, p)
-
-    bpy.context.scene.objects.unlink(object0)
-
-    bpy.data.objects.remove(object0)
-    bpy.data.meshes.remove(mesh0)
-
-    # fix_mesh(mesh)
-    # for testing:
-    # bpy.context.scene.objects.link(object0)
-    return object
-
 
 # ------------------------------------------
 
@@ -314,7 +269,6 @@ def add_children_from_blend(parent, blendfilepath, libdict):
         children = load_blend(blendfilepath)
         libdict[blendfilepath] = children
     for child in children:
-        # bpy.context.scene.objects.link(child) OLD blender
         bpy.context.collection.objects.link(child)
         if child.parent is None:
             child.parent = parent
@@ -355,7 +309,6 @@ def ele_object(
         # bpy.context.scene.objects.link(object) old blender
         bpy.context.collection.objects.link(object)
 
-        # fix_mesh(object)
     object.location = (0, 0, 0)
     bfile = blendfile(ele)
     if bfile and use_real_model and catalogue:
@@ -374,13 +327,10 @@ def ele_object(
             print("Blend file missing: ", f)
 
     mat = ele_material(ele)
-    # print('color: ', color)
     mat.diffuse_color = ele_color(ele) + tuple([1])
     object.data.materials.append(mat)
 
     return object
-
-    # bpy.context.scene.objects.link(object)
 
 
 def ele_objects(
@@ -394,7 +344,6 @@ def ele_objects(
     """
     Create multiple objects from a list of eles (a lattice)
     """
-    print("here 2")
     Xcenter, Ycenter, Zcenter = origin
 
     objects = []
