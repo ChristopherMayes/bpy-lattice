@@ -182,19 +182,6 @@ def new_ellipse(radius_x=1, radius_y=1, length=1, vertices=32):
         v.co[0] *= radius_y / radius_x
     return ob
 
-
-def pipe_object(ele: Element):
-    print("pipe_object")
-    mesh = ele_mesh(ele)
-    print("pipe mesh vertices: ", len(mesh.vertices))
-    fix_mesh(mesh)
-    object = bpy.data.objects.new(ele.name, mesh)
-
-    # add to scene to
-    bpy.context.collection.objects.link(object)
-
-    return object
-
 # ------------------------------------------
 
 
@@ -259,24 +246,32 @@ def ele_object(
     use_real_model: bool = False,
     catalogue: Optional[str] = None,
     hide_real_model: bool = True,
+    keep_simple_model: bool = True
 ):
     print("Object: ", ele.name)
     
-    # Generate the "simple" model
-    if isinstance(ele, Pipe) and ele.thickness > 0 and ele.radius_x > 0:
-            object = pipe_object(ele)
-    else:
-        mesh = ele_mesh(ele)
-        object = bpy.data.objects.new(ele.name, mesh)
-        bpy.context.collection.objects.link(object)
-    object.location = (0, 0, 0)
-    
     # Load blender model of element
     bfile = blendfile(ele)
+    
+    # Setup material
+    mat = ele_material(ele)
+    mat.diffuse_color = ele_color(ele) + tuple([1])
+    
+    object = None
     if bfile and use_real_model and catalogue:
         f = os.path.join(catalogue, bfile)
         if os.path.isfile(f):
             print("blend file: ", f, "exists!")
+            
+            # Setup parent
+            if keep_simple_model:
+                object = bpy.data.objects.new(ele.name, ele_mesh(ele))
+                object.data.materials.append(mat)
+            else:
+                object = bpy.data.objects.new(ele.name, None)
+            bpy.context.collection.objects.link(object)
+
+            # Add the CAD model from blend file
             add_children_from_blend(object, f, library)
 
             # Hide options for preview
@@ -289,9 +284,12 @@ def ele_object(
         else:
             print("Blend file missing: ", f)
 
-    mat = ele_material(ele)
-    mat.diffuse_color = ele_color(ele) + tuple([1])
-    object.data.materials.append(mat)
+    if object is None:
+        object = bpy.data.objects.new(ele.name, ele_mesh(ele))
+        object.data.materials.append(mat)
+        bpy.context.collection.objects.link(object)
+
+    object.location = (0, 0, 0)
 
     return object
 
@@ -303,6 +301,7 @@ def ele_objects(
     catalogue: Optional[str] = None,
     hide_real_model: bool = True,
     origin: Tuple[float, float, float] = (0, 0, 0),
+    keep_simple_model: bool = True
 ):
     """
     Create multiple objects from a list of eles (a lattice)
@@ -323,6 +322,7 @@ def ele_objects(
             use_real_model=use_real_model,
             hide_real_model=hide_real_model,
             catalogue=catalogue,
+            keep_simple_model=keep_simple_model,
         )
 
         # Set location and angles
