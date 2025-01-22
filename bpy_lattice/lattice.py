@@ -4,70 +4,35 @@ import os
 import re
 from mathutils import Matrix, Vector
 from math import sin, cos, pi
-from typing import Tuple, Optional
+from typing import Tuple, Optional, List
 
 from bpy_lattice import slicer
 from bpy_lattice import materials
 from .constants import ELE_COLOR, ELE_X_SCALE, ELE_X_SCALE_FACTOR
+from .elements import import_lattice, Element, SBend, Pipe  # Needed for old code referencing lattice.import_lattice
 
 
-def ele_material(ele):
-    key = ele["key"]
+def ele_material(ele: Element):
+    key = ele.key
     name = key + "_material"
     if name in bpy.data.materials:
         return bpy.data.materials[name]
     return materials.diffuse_material(name, color=ele_color(ele) + tuple([1]))
 
 
-def map_table_dict(line):
-    print("map_table_dict: ", line)
-    d = {}
-    vals = line.split(",")[0:14]
-    d["name"] = vals[0].strip()
-    d["index"] = int(vals[1])
-    d["x"] = float(vals[2])
-    d["y"] = float(vals[3])
-    d["z"] = float(vals[4])
-    d["theta"] = float(vals[5])
-    d["phi"] = float(vals[6])
-    d["psi"] = float(vals[7])
-    d["key"] = vals[8].strip().upper()
-    d["L"] = float(vals[9])
-    if d["key"] == "SBEND":
-        d["angle"] = float(vals[10])
-        d["e1"] = float(vals[11])
-        d["e2"] = float(vals[12])
-    if d["key"] == "PIPE":
-        d["radius_x"] = float(vals[10])
-        d["radius_y"] = float(vals[11])
-        d["thickness"] = float(vals[12])
-    if d["key"] == "WIGGLER":
-        d["radius_x"] = float(vals[10])
-        d["radius_y"] = float(vals[11])
-    d["descrip"] = vals[13]
-    return d
-
-
-def blendfile(ele):
-    match = re.search("3DMODEL=(.+?).blend", ele["descrip"])
+def blendfile(ele: Element):
+    match = re.search("3DMODEL=(.+?).blend", ele.descrip)
     if match:
         return match.group(1) + ".blend"
     else:
         return None
 
 
-def import_lattice(file):
-    with open(file, "r") as f:
-        next(f)  # Skip the header line
-        lat = [map_table_dict(line) for line in f]
-    return lat
-
-
-def ele_x_scale(ele):
+def ele_x_scale(ele: Element):
     """
     Scale factor for an element
     """
-    key = ele["key"]
+    key = ele.key
     scale = 1
     if key in ELE_X_SCALE:
         scale = ELE_X_SCALE[key]
@@ -77,12 +42,12 @@ def ele_x_scale(ele):
     return ELE_X_SCALE_FACTOR * scale
 
 
-def ele_color(ele):
+def ele_color(ele: Element):
     """
     Color for an element
     """
     color = (0, 0, 0)
-    key = ele["key"]
+    key = ele.key
     if key in ELE_COLOR:
         color = ELE_COLOR[key]
 
@@ -133,26 +98,26 @@ def multipole_section(X, aperture, n):
     return [(X, aperture * cos(a), aperture * sin(a)) for a in angles]
 
 
-def ele_section(s_rel, ele):
+def ele_section(s_rel, ele: Element):
     """
-    Make sections relatice to center of element
+    Make sections relative to center of element
     """
     sc = ele_x_scale(ele)
-    if ele["key"] == "QUADRUPOLE":
+    if ele.key == "QUADRUPOLE":
         return multipole_section(s_rel, sc, 4)
-    if ele["key"] == "SEXTUPOLE":
+    if ele.key == "SEXTUPOLE":
         return multipole_section(s_rel, sc, 6)
-    elif ele["key"] == "SBEND":
-        a = ele["angle"]
-        if abs(a) < 1e-5 or abs(ele["L"]) < 1e-5:
+    elif isinstance(ele, SBend):
+        a = ele.angle
+        if abs(a) < 1e-5 or abs(ele.L) < 1e-5:
             return box_section(s_rel, sc, sc)
-        L = ele["L"]
+        L = ele.L
         rho = L / a
         # Baseline section
         s0 = box_section(0, sc, sc)
         # Edge angle
         f = s_rel / L + 0.5
-        edge = ele["e2"] * f + (-1) * ele["e1"] * (1 - f)
+        edge = ele.e2 * f + (-1) * ele.e1 * (1 - f)
         m0 = Matrix.Rotation(edge, 4, "Z")
         m1 = Matrix.Translation((0, rho, 0))
         m2 = Matrix.Rotation(-s_rel / rho, 4, "Z")
@@ -164,12 +129,12 @@ def ele_section(s_rel, ele):
             sec.append(v[:])
         return sec
 
-    elif ele["key"] == "WIGGLER":
+    elif ele.key == "WIGGLER":
         return box_section(s_rel, sc, 2 * sc)
-    elif ele["key"] == "PIPE":
-        rx = ele["radius_x"]
-        ry = ele["radius_y"]
-        t = ele["thickness"]
+    elif isinstance(ele, Pipe): 
+        rx = ele.radius_x
+        ry = ele.radius_y
+        t = ele.thickness
         if rx == 0 or ry == 0:
             return ellipse_section(s_rel, sc, sc)
         else:
@@ -178,11 +143,11 @@ def ele_section(s_rel, ele):
         return ellipse_section(s_rel, sc, sc)
 
 
-def ele_mesh(ele):
-    name = ele["name"]
+def ele_mesh(ele: Element):
+    name = ele.name
     print("Mesh: ", name)
-    L = ele["L"]
-    if ele["key"] == "SBEND":
+    L = ele.L
+    if ele.key == "SBEND":
         n = 20
         slist = [L * i / (n - 1) - L / 2 for i in range(n)]
     else:
@@ -218,22 +183,14 @@ def new_ellipse(radius_x=1, radius_y=1, length=1, vertices=32):
     return ob
 
 
-def pipe_object(ele):
+def pipe_object(ele: Element):
     print("pipe_object")
-    ele0 = ele.copy()
-    ele0["thickness"] = 0
-    ele0["L"] = ele["L"] * 1.1  # the punch needs to be slightly longer to work
-    mesh0 = ele_mesh(ele0)
     mesh = ele_mesh(ele)
-    print("pipe mesh vertices: ", len(mesh0.vertices), len(mesh.vertices))
-
-    fix_mesh(mesh0)
+    print("pipe mesh vertices: ", len(mesh.vertices))
     fix_mesh(mesh)
-    object0 = bpy.data.objects.new("dummy", mesh0)
-    object = bpy.data.objects.new(ele["name"], mesh)
+    object = bpy.data.objects.new(ele.name, mesh)
 
     # add to scene to
-    bpy.context.collection.objects.link(object0)
     bpy.context.collection.objects.link(object)
 
     return object
@@ -297,20 +254,20 @@ def old_fix_mesh(object):
 
 
 def ele_object(
-    ele, 
+    ele: Element, 
     library: dict = {},
     use_real_model: bool = False,
     catalogue: Optional[str] = None,
     hide_real_model: bool = True,
 ):
-    print("Object: ", ele["name"])
+    print("Object: ", ele.name)
     
     # Generate the "simple" model
-    if ele["key"] == "PIPE" and ele["thickness"] > 0 and ele["radius_x"] > 0:
-        object = pipe_object(ele)
+    if isinstance(ele, Pipe) and ele.thickness > 0 and ele.radius_x > 0:
+            object = pipe_object(ele)
     else:
         mesh = ele_mesh(ele)
-        object = bpy.data.objects.new(ele["name"], mesh)
+        object = bpy.data.objects.new(ele.name, mesh)
         bpy.context.collection.objects.link(object)
     object.location = (0, 0, 0)
     
@@ -340,7 +297,7 @@ def ele_object(
 
 
 def ele_objects(
-    eles: list,
+    eles: List[Element],
     library: dict = {},
     use_real_model: bool = False,
     catalogue: Optional[str] = None,
@@ -354,9 +311,9 @@ def ele_objects(
 
     objects = []
     for ele in eles:
-        if ele["L"] == 0:
-            if ele["key"] == "MARKER":
-                ele["L"] = 1e-3
+        if ele.L == 0:
+            if ele.key == "MARKER":
+                ele.L = 1e-3
             else:
                 continue
 
@@ -369,10 +326,10 @@ def ele_objects(
         )
 
         # Set location and angles
-        ob.rotation_euler.z = ele["theta"]
-        ob.rotation_euler.y = -ele["phi"]
-        ob.rotation_euler.x = ele["psi"]
-        ob.location = (ele["z"] - Xcenter, ele["x"] - Ycenter, ele["y"] - Zcenter)
+        ob.rotation_euler.z = ele.theta
+        ob.rotation_euler.y = -ele.phi
+        ob.rotation_euler.x = ele.psi
+        ob.location = (ele.z - Xcenter, ele.x - Ycenter, ele.y - Zcenter)
 
         objects.append(ob)
 
