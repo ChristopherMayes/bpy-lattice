@@ -16,7 +16,7 @@ classifiers = [
   "Topic :: Scientific/Engineering",
 ]
 dependencies = [
-  "numpy>=2",
+  "numpy<2", # Needed because of https://projects.blender.org/blender/blender/issues/134550
   "bpy",
 ]
 description = "Tools for creating particle accelerator models in Blender"
@@ -40,6 +40,9 @@ namespaces = false
 
 [project.license]
 file = "LICENSE"
+
+[project.scripts]
+bmad-to-blender = "bpy_lattice.interfaces.bmad:bmad_to_blender_entrypoint"
 
 [tool.ruff]
 # select = []

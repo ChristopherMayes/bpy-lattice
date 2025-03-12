@@ -6,10 +6,13 @@ from mathutils import Matrix, Vector
 from math import sin, cos, pi
 from typing import Tuple, Optional, List
 
-from bpy_lattice import slicer
 from bpy_lattice import materials
 from .constants import ELE_COLOR, ELE_X_SCALE, ELE_X_SCALE_FACTOR
-from .elements import import_lattice, Element, SBend, Pipe  # Needed for old code referencing lattice.import_lattice
+from .elements import (
+    Element,
+    SBend,
+    Pipe,
+)  # Needed for old code referencing lattice.import_lattice
 
 
 def ele_material(ele: Element):
@@ -131,7 +134,7 @@ def ele_section(s_rel, ele: Element):
 
     elif ele.key == "WIGGLER":
         return box_section(s_rel, sc, 2 * sc)
-    elif isinstance(ele, Pipe): 
+    elif isinstance(ele, Pipe):
         rx = ele.radius_x
         ry = ele.radius_y
         t = ele.thickness
@@ -167,6 +170,7 @@ def ele_mesh(ele: Element):
 
 # ------ Pipe stuff
 
+
 def rotate_mesh(mesh, mat=Matrix.Rotation(pi / 2, 4, "Y")):
     for v in mesh.vertices:
         v.co = mat * v.co
@@ -181,6 +185,7 @@ def new_ellipse(radius_x=1, radius_y=1, length=1, vertices=32):
     for v in mesh.vertices:
         v.co[0] *= radius_y / radius_x
     return ob
+
 
 # ------------------------------------------
 
@@ -241,28 +246,28 @@ def old_fix_mesh(object):
 
 
 def ele_object(
-    ele: Element, 
+    ele: Element,
     library: dict = {},
     use_real_model: bool = False,
     catalogue: Optional[str] = None,
     hide_real_model: bool = True,
-    keep_simple_model: bool = True
+    keep_simple_model: bool = True,
 ):
     print("Object: ", ele.name)
-    
+
     # Load blender model of element
     bfile = blendfile(ele)
-    
+
     # Setup material
     mat = ele_material(ele)
     mat.diffuse_color = ele_color(ele) + tuple([1])
-    
+
     object = None
     if bfile and use_real_model and catalogue:
         f = os.path.join(catalogue, bfile)
         if os.path.isfile(f):
             print("blend file: ", f, "exists!")
-            
+
             # Setup parent
             if keep_simple_model:
                 object = bpy.data.objects.new(ele.name, ele_mesh(ele))
@@ -301,7 +306,7 @@ def ele_objects(
     catalogue: Optional[str] = None,
     hide_real_model: bool = True,
     origin: Tuple[float, float, float] = (0, 0, 0),
-    keep_simple_model: bool = True
+    keep_simple_model: bool = True,
 ):
     """
     Create multiple objects from a list of eles (a lattice)
@@ -311,7 +316,7 @@ def ele_objects(
     objects = []
     for ele in eles:
         if ele.L == 0:
-            if ele.key == "MARKER":
+            if ele.key in ("MARKER", "MIRROR"):
                 ele.L = 1e-3
             else:
                 continue
