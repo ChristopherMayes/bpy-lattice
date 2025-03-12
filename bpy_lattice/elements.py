@@ -40,7 +40,7 @@ class Wiggler(Element):
 def map_table_element(line: str) -> Union[SBend, Pipe, Wiggler, Element]:
     """Maps a comma-separated line to the appropriate beamline element dataclass."""
     vals = line.split(",")[0:14]
-    
+
     # Common parameters for all elements
     base_params = {
         "name": vals[0].strip(),
@@ -53,30 +53,25 @@ def map_table_element(line: str) -> Union[SBend, Pipe, Wiggler, Element]:
         "psi": float(vals[7]),
         "key": vals[8].strip().upper(),
         "L": float(vals[9]),
-        "descrip": vals[13]
+        "descrip": vals[13],
     }
-    
+
     element_type = base_params["key"]
-    
+
     if element_type == "SBEND":
         return SBend(
-            **base_params,
-            angle=float(vals[10]),
-            e1=float(vals[11]),
-            e2=float(vals[12])
+            **base_params, angle=float(vals[10]), e1=float(vals[11]), e2=float(vals[12])
         )
     elif element_type == "PIPE":
         return Pipe(
             **base_params,
             radius_x=float(vals[10]),
             radius_y=float(vals[11]),
-            thickness=float(vals[12])
+            thickness=float(vals[12]),
         )
     elif element_type == "WIGGLER":
         return Wiggler(
-            **base_params,
-            radius_x=float(vals[10]),
-            radius_y=float(vals[11])
+            **base_params, radius_x=float(vals[10]), radius_y=float(vals[11])
         )
     else:
         return Element(**base_params)

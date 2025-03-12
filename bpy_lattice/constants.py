@@ -1,4 +1,3 @@
-
 ELE_X_SCALE_FACTOR = 50
 
 
