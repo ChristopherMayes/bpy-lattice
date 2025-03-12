@@ -4,37 +4,37 @@ from typing import Union
 
 @dataclass
 class Element:
-    name: str
-    index: int
-    x: float
-    y: float
-    z: float
-    theta: float
-    phi: float
-    psi: float
-    key: str
-    L: float
-    descrip: str
+    name: str = ""
+    index: int = 0
+    x: float = 0
+    y: float = 0
+    z: float = 0
+    theta: float = 0
+    phi: float = 0
+    psi: float = 0
+    key: str = "marker"
+    L: float = 0
+    descrip: str = ""
 
 
 @dataclass
 class SBend(Element):
-    angle: float
-    e1: float
-    e2: float
+    angle: float = 0
+    e1: float = 0
+    e2: float = 0
 
 
 @dataclass
 class Pipe(Element):
-    radius_x: float
-    radius_y: float
-    thickness: float
+    radius_x: float = 0
+    radius_y: float = 0
+    thickness: float = 0
 
 
 @dataclass
 class Wiggler(Element):
-    radius_x: float
-    radius_y: float
+    radius_x: float = 0
+    radius_y: float = 0
 
 
 def map_table_element(line: str) -> Union[SBend, Pipe, Wiggler, Element]:
