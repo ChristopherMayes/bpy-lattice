@@ -30,7 +30,7 @@ include = ["bpy_lattice*"]
 namespaces = false
 
 [project.license]
-file = "LICENSE"
+file = "LICENSE.txt"
 
 [project.scripts]
 bmad-to-blender = "bpy_lattice.interfaces.bmad:bmad_to_blender_entrypoint"
