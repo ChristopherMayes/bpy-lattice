@@ -9,6 +9,7 @@ from typing import Tuple, Optional, List
 from bpy_lattice import materials
 from .constants import ELE_COLOR, ELE_X_SCALE, ELE_X_SCALE_FACTOR
 from .elements import (
+    map_table_element,
     Element,
     SBend,
     Pipe,
@@ -344,3 +345,10 @@ def ele_objects(
 def lat_borders(lat, dim="x"):
     xlist = [ele[dim] for ele in lat]
     return min(xlist), max(xlist)
+
+
+def import_lattice(file):
+    with open(file, "r") as f:
+        next(f)  # Skip the header line
+        lat = [map_table_element(line) for line in f]
+    return lat

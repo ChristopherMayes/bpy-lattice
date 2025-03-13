@@ -75,10 +75,3 @@ def map_table_element(line: str) -> Union[SBend, Pipe, Wiggler, Element]:
         )
     else:
         return Element(**base_params)
-
-
-def import_lattice(file):
-    with open(file, "r") as f:
-        next(f)  # Skip the header line
-        lat = [map_table_element(line) for line in f]
-    return lat
