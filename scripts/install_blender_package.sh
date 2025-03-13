@@ -12,7 +12,7 @@ list_blender_versions() {
 
 # Documentation
 show_help() {
-  echo "Usage: $0 <blender_version> <path_to_local_package> [--editable]"
+  echo "Usage: $0 <blender_version> [--editable]"
   echo
   echo "This script installs bpy-lattice into Blender's Python environment."
   echo

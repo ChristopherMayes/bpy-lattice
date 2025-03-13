@@ -12,7 +12,7 @@ This package includes a general installation script for macOS:
 
 ```bash
 bash scripts/install_blender_package.sh
-Usage: scripts/install_blender_package.sh <blender_version> <path_to_local_package> [--editable]
+Usage: scripts/install_blender_package.sh <blender_version> [--editable]
 
 This script installs bpy-lattice into Blender's Python environment.
 
