@@ -6,7 +6,7 @@ Extensions to Blender to draw accelerator lattices
 
 Blender ships with its own Python. On macOS, this is in a place like:
 
-`/Applications/Blender.app/Contents/Resources/4.2/python/bin/python3.11`
+`/Applications/Blender.app/Contents/Resources/4.3/python/bin/python3.11`
 
 This package includes a general installation script for macOS:
 
@@ -20,8 +20,8 @@ Arguments:
   <blender_version>          The version of Blender to target (e.g., 4.2).
   [--editable]               Optional flag to install the package in editable mode.
 
-Base Path: /Users/cmayes/Library/Application Support/Blender
-Modules Path: /Users/ChristopherMayes/Library/Application Support/Blender/<version>/scripts/modules
+Base Path: /Users/<username>/Library/Application Support/Blender
+Modules Path: /Users/<username>/Library/Application Support/Blender/<version>/scripts/modules
 
 Examples:
   scripts/install_blender_package.sh 4.2
