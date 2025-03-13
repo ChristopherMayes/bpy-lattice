@@ -12,25 +12,24 @@ This package includes a general installation script for macOS:
 
 ```bash
 bash scripts/install_blender_package.sh
-Usage: scripts/install_blender_package.sh <blender_version> <path_to_local_package> [--editable]
+Usage: scripts/install_blender_package.sh <blender_version> [--editable]
 
-This script installs a local Python package into Blender's Python environment.
+This script installs bpy-lattice into Blender's Python environment.
 
 Arguments:
   <blender_version>          The version of Blender to target (e.g., 4.2).
-  <path_to_local_package>    The path to the local Python package to install.
   [--editable]               Optional flag to install the package in editable mode.
 
 Base Path: /Users/<username>/Library/Application Support/Blender
 Modules Path: /Users/<username>/Library/Application Support/Blender/<version>/scripts/modules
 
 Examples:
-  scripts/install_blender_package.sh 4.2 /path/to/your/package
-  scripts/install_blender_package.sh 4.2 /path/to/your/package --editable
+  scripts/install_blender_package.sh 4.2
+  scripts/install_blender_package.sh 4.2 --editable
 
 This script also lists available Blender versions if arguments are missing or incorrect.
 Available Blender versions:
-4.2
+4.3
 ```
 
 Note that older installation methods no longer work.

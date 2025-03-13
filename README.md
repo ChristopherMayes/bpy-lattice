@@ -20,8 +20,8 @@ Arguments:
   <blender_version>          The version of Blender to target (e.g., 4.2).
   [--editable]               Optional flag to install the package in editable mode.
 
-Base Path: /Users/cmayes/Library/Application Support/Blender
-Modules Path: /Users/ChristopherMayes/Library/Application Support/Blender/<version>/scripts/modules
+Base Path: /Users/<username>/Library/Application Support/Blender
+Modules Path: /Users/<username>/Library/Application Support/Blender/<version>/scripts/modules
 
 Examples:
   scripts/install_blender_package.sh 4.2
