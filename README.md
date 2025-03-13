@@ -11,7 +11,7 @@ Blender ships with its own Python. On macOS, this is in a place like:
 This package includes a general installation script for macOS:
 
 ```bash
-bash scripts/install_blender_package.sh 
+bash scripts/install_blender_package.sh
 Usage: scripts/install_blender_package.sh <blender_version> <path_to_local_package> [--editable]
 
 This script installs bpy-lattice into Blender's Python environment.
