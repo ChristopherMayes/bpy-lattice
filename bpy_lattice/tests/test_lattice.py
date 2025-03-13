@@ -1,14 +1,8 @@
 from bpy_lattice.lattice import ele_object
+from bpy_lattice.elements import Element, SBend, Pipe, Wiggler
 
 
-def test():
-    ele = {
-        "name": "test_pipe",
-        "radius_x": 0.2,
-        "radius_y": 0.1,
-        "thickness": 0.01,
-        "L": 1,
-        "key": "PIPE",
-        "descrip": "",
-    }
-    ele_object(ele, None)
+def test_ele_object():
+    for ele in (Element(), SBend(), Pipe(), Wiggler()):
+        ele = Element()
+        ele_object(ele, None)

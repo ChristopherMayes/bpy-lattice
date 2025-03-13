@@ -1,14 +1,9 @@
 [build-system]
 build-backend = "setuptools.build_meta"
-requires = [
-  "setuptools>=60",
-  "setuptools_scm[toml]>=8.0"
-]
+requires = ["setuptools>=60", "setuptools_scm[toml]>=8.0"]
 
 [project]
-authors = [
-  {name="Christopher Mayes"},
-]
+authors = [{ name = "Christopher Mayes" }]
 classifiers = [
   "Development Status :: 4 - Beta",
   "Natural Language :: English",
@@ -16,30 +11,29 @@ classifiers = [
   "Topic :: Scientific/Engineering",
 ]
 dependencies = [
-  "numpy>=2",
+  "numpy<2", # Needed because of https://projects.blender.org/blender/blender/issues/134550
   "bpy",
 ]
 description = "Tools for creating particle accelerator models in Blender"
-dynamic = [ "version" ]
+dynamic = ["version"]
 keywords = []
 name = "bpy-lattice"
-readme = {file = "README.md", content-type = "text/markdown"}
+readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.9"
 
 [project.urls]
 Homepage = "https://github.com/ChristopherMayes/bpy-lattice"
 
-[options]
-zip_safe = false
-include_package_data = true
-
 [tool.setuptools.packages.find]
 where = ["."]
-include = [ "bpy_lattice*", ]
+include = ["bpy_lattice*"]
 namespaces = false
 
 [project.license]
 file = "LICENSE"
+
+[project.scripts]
+bmad-to-blender = "bpy_lattice.interfaces.bmad:bmad_to_blender_entrypoint"
 
 [tool.ruff]
 # select = []

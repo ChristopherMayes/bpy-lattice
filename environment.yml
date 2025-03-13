@@ -4,8 +4,9 @@ channels:
   - conda-forge
 dependencies:
   - python==3.11 # Required for latest Blender
-  - numpy>2
+  - numpy<2 # Needed because of https://projects.blender.org/blender/blender/issues/134550
   # Developer
+  - pytao
   - pytest
   - pytest-cov
   - jupyterlab>=3

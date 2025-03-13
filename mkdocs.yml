@@ -6,6 +6,7 @@ nav:
   - Home: index.md
   - Examples:
     - examples/test.ipynb
+    - examples/bmad_interface_example.ipynb
 
 theme:
   icon:

@@ -1,4 +1,3 @@
-
 ELE_X_SCALE_FACTOR = 50
 
 
@@ -15,6 +14,7 @@ ELE_X_SCALE = {
     "LCAVITY": 0.1,
     "RFCAVITY": 0.5,
     "SOLENOID": 0.1,
+    "THICK_MULTIPOLE": 0.04,
     "WIGGLER": 0.04,
     "EM_FIELD": 0.1,
     "INSTRUMENT": 0.05,
@@ -33,4 +33,5 @@ ELE_COLOR = {
     "SEXTUPOLE": (1, 1, 0),
     "WIGGLER": (1, 0.4, 0),
     "INSTRUMENT": (0, 0, 0),
+    "THICK_MULTIPOLE": (1, 0.2, 0.5),
 }
