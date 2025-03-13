@@ -73,10 +73,12 @@ fi
 
 # Determine the install command
 if [ "$EDITABLE_FLAG" == "--editable" ]; then
-  INSTALL_COMMAND="$PYTHON_EXEC -m pip install -e --target=\"$MODULES_PATH\" \"$PACKAGE_PATH\""
+  INSTALL_COMMAND="$PYTHON_EXEC -m pip install --no-deps --ignore-installed -e --target=\"$MODULES_PATH\" \"$PACKAGE_PATH\""
 else
-  INSTALL_COMMAND="$PYTHON_EXEC -m pip install --target=\"$MODULES_PATH\" \"$PACKAGE_PATH\""
+  INSTALL_COMMAND="$PYTHON_EXEC -m pip install --no-deps --ignore-installed --target=\"$MODULES_PATH\" \"$PACKAGE_PATH\""
 fi
+
+echo "Installing with command: $INSTALL_COMMAND"
 
 # Install the local package directly into Blender's scripts/modules directory
 eval $INSTALL_COMMAND
