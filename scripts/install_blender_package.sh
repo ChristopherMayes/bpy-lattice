@@ -52,35 +52,31 @@ if [ ! -d "$BASE_PATH" ]; then
   exit 1
 fi
 
-# Create the modules directory if it doesn't exist
-mkdir -p "$MODULES_PATH"
-
 # Find the Python executable within the specified Blender version path
 BLENDER_APP_PATH="/Applications/Blender.app/Contents/Resources/$BLENDER_VERSION/python/bin"
 PYTHON_EXEC=$(find "$BLENDER_APP_PATH" -name "python3.*" 2>/dev/null | head -n 1)
 
 # Check if the Python executable was found
-if [ -z "$PYTHON_EXEC" ]; then
+if [ ! -x "$PYTHON_EXEC" ]; then
   echo "Blender Python executable not found for version $BLENDER_VERSION"
   exit 1
 fi
 
-# Ensure pip is available
-"$PYTHON_EXEC" -m ensurepip
-
-# Upgrade pip to the latest version
-"$PYTHON_EXEC" -m pip install --upgrade pip
+# Create the modules directory if it doesn't exist
+mkdir -p "$MODULES_PATH"
 
 # Determine the install command
+INSTALL_BASE_COMMAND="$PYTHON_EXEC -m pip install --no-deps --ignore-installed --target=\"$MODULES_PATH\""
+
 if [ "$EDITABLE_FLAG" == "--editable" ]; then
-  INSTALL_COMMAND="$PYTHON_EXEC -m pip install --no-deps --ignore-installed -e --target=\"$MODULES_PATH\" \"$PACKAGE_PATH\""
+  INSTALL_COMMAND="$INSTALL_BASE_COMMAND -e \"$PACKAGE_PATH\""
 else
-  INSTALL_COMMAND="$PYTHON_EXEC -m pip install --no-deps --ignore-installed --target=\"$MODULES_PATH\" \"$PACKAGE_PATH\""
+  INSTALL_COMMAND="$INSTALL_BASE_COMMAND \"$PACKAGE_PATH\""
 fi
 
 echo "Installing with command: $INSTALL_COMMAND"
 
 # Install the local package directly into Blender's scripts/modules directory
-eval $INSTALL_COMMAND
+eval $INSTALL_COMMAND || exit
 
 echo "Custom Python package installed into: $MODULES_PATH"
