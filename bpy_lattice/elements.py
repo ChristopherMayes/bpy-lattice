@@ -12,7 +12,7 @@ class Element:
     theta: float = 0
     phi: float = 0
     psi: float = 0
-    key: str = "marker"
+    key: str = "MARKER"
     L: float = 0
     descrip: str = ""
 
