@@ -5,7 +5,14 @@ from mathutils import Matrix, Vector  # must be import after bpy for some reason
 
 
 def ellipse_points(
-    a: float, b: float, n: int = 30, x: float = 0, a2: float = 0, b2: float = 0
+    a: float,
+    b: float,
+    n: int = 30,
+    a2: float = 0,
+    b2: float = 0,
+    x: float = 0,
+    y: float = 0,
+    z: float = 0,
 ) -> List[Tuple[float, float, float]]:
     """
     Generate a loop of points forming an ellipse in the y-z plane.
@@ -20,12 +27,16 @@ def ellipse_points(
         Semi-minor axis for negative z direction (-b).
     n : int, optional
         Total number of points in the loop (default is 30).
-    x : float, optional
-        x-coordinate of the section, for positioning in 3D space (default is 0).
     a2 : float, optional
         Semi-major axis for positive y direction. If 0, defaults to `a` (default is 0).
     b2 : float, optional
         Semi-minor axis for positive z direction. If 0, defaults to `b` (default is 0).
+    x : float, optional
+        x-coordinate of the section, for positioning in 3D space (default is 0).
+    y : float, optional
+        y-coordinate of the section, for positioning in 3D space (default is 0).
+    z : float, optional
+        z-coordinate of the section, for positioning in 3D space (default is 0).
 
     Returns
     -------
@@ -55,14 +66,21 @@ def ellipse_points(
     y4, z4 = a2 * np.cos(theta4), b * np.sin(theta4)
 
     # Combine all quadrants ensuring n total points
-    y = np.concatenate([y1, y2, y3, y4])
-    z = np.concatenate([z1, z2, z3, z4])
+    ys = np.concatenate([y1, y2, y3, y4])
+    zs = np.concatenate([z1, z2, z3, z4])
 
-    return [(x, float(y[i]), float(z[i])) for i in range(len(y))]
+    return [(x, float(y + ys[i]), float(z + zs[i])) for i in range(len(ys))]
 
 
 def rectangle_points(
-    a: float, b: float, n: int = 4, x: float = 0, a2: float = None, b2: float = None
+    a: float,
+    b: float,
+    n: int = 4,
+    a2: float = None,
+    b2: float = None,
+    x: float = 0,
+    y: float = 0,
+    z: float = 0,
 ) -> List[Tuple[float, float, float]]:
     """
     Generate a rectangular loop of 4 points in the y-z plane, supporting asymmetric semi-axes.
@@ -77,12 +95,16 @@ def rectangle_points(
         Half-height of the rectangle along the negative z direction (-b).
     n : int, optional
         Ignored (only included for argument consistency with `ellipse_section`).
-    x : float, optional
-        x-coordinate of the section, for positioning in 3D space (default is 0).
     a2 : float, optional
         Half-width of the rectangle along the positive y direction. If None, defaults to `a` (default is None).
     b2 : float, optional
         Half-height of the rectangle along the positive z direction. If None, defaults to `b` (default is None).
+    x : float, optional
+        x-coordinate of the section, for positioning in 3D space (default is 0).
+    y : float, optional
+        y-coordinate of the section, for positioning in 3D space (default is 0).
+    z : float, optional
+        z-coordinate of the section, for positioning in 3D space (default is 0).
 
     Returns
     -------
@@ -96,16 +118,16 @@ def rectangle_points(
 
     # Define the four corners in (y, z) space
     points = [
-        (x, -a, -b),  # Bottom-left
-        (x, -a, b2),  # Top-left
-        (x, a2, b2),  # Top-right
-        (x, a2, -b),  # Bottom-right
+        (x, y - a, z - b),  # Bottom-left
+        (x, y - a, z + b2),  # Top-left
+        (x, y + a2, z + b2),  # Top-right
+        (x, y + a2, z - b),  # Bottom-right
     ]
 
     return points
 
 
-def revolve_section(
+def revolve_section_bpy(
     section,
     s_rel: float,
     g: float = 0,
@@ -155,6 +177,45 @@ def revolve_section(
     return sec
 
 
+def revolve_section(sec, s_rel, g, e1=0, e2=0, L=0):
+    """
+    Similar to revolve_section_bpy, but uses numpy.
+
+    Oddly, revolve_section_bpy is still faster.
+    """
+    # Edge angle (used in bends)
+    if L != 0:
+        f = s_rel / L + 0.5
+        edge = e2 * f + (-1) * e1 * (1 - f)
+    else:
+        edge = 0
+
+    R = np.array(sec)
+    x1 = R[:, 0]
+    y1 = R[:, 1]
+    z1 = R[:, 2]
+
+    # Edge angle
+    x1e = x1 * np.cos(edge) - y1 * np.sin(edge)
+    y1e = x1 * np.sin(edge) + y1 * np.cos(edge)
+
+    if g == 0:
+        x2 = x1 + s_rel
+        y2 = y1
+
+    else:
+        theta = s_rel * g
+        rho = 1 / g
+
+        x2 = (rho + y1e) * np.sin(theta) + x1e * np.cos(theta)
+        y2 = (rho + y1e) * np.cos(theta) - x1e * np.sin(theta) - rho
+
+    return [
+        tuple(row) for row in np.column_stack((x2, y2, z1))
+    ]  # Return list of tuples
+    # return np.column_stack((x2, y2, z1)).tolist() # Return list of lists
+
+
 def join_sections(section1, section2):
     """
     Create faces between two consecutive sections.
@@ -185,7 +246,7 @@ def join_sections(section1, section2):
     return faces
 
 
-def build_aperture_mesh(inner_sections):
+def build_aperture_mesh(inner_sections, cap_ends=False):
     """
     Generate a mesh from a series of inner pipe sections.
 
@@ -224,5 +285,13 @@ def build_aperture_mesh(inner_sections):
                 [vertex_index_map[v] for v in inner_sections[i + 1]],
             )
         )
+
+    # Cap the start and end
+    if cap_ends:
+        first_loop = [vertex_index_map[v] for v in inner_sections[0]]
+        last_loop = [vertex_index_map[v] for v in inner_sections[-1]]
+
+        all_faces.append(tuple(first_loop))  # Start cap
+        all_faces.append(tuple(reversed(last_loop)))  # End cap
 
     return all_vertices, all_faces
