@@ -1,57 +1,14 @@
 import bpy
+
 import numpy as np
-from .mesh import build_aperture_mesh, rectangle_points, ellipse_points, revolve_section
+from .mesh import (
+    build_aperture_mesh,
+    rectangle_points,
+    ellipse_points,
+    revolve_section,
+    create_solidified_mesh,
+)
 from .types import ApertureShape
-
-
-def create_blender_mesh_with_solidify(
-    vertices,
-    faces,
-    thickness,
-    mesh_name="PipeMesh",
-    object_name="PipeObject",
-    apply=True,
-):
-    """
-    Create a Blender mesh and apply a Solidify modifier.
-
-    Parameters
-    ----------
-    vertices : List[Tuple[float, float, float]]
-        List of vertex coordinates.
-    faces : List[Tuple[int, int, int, int]]
-        List of face indices.
-    thickness : float
-        Thickness of the solidified object.
-    apply : bool, optional
-        Whether to apply the Solidify modifier immediately (default is True).
-    """
-    # Create mesh
-    mesh = bpy.data.meshes.new(mesh_name)
-    mesh.from_pydata(vertices, [], faces)
-    mesh.update()
-
-    # Create object and link to scene
-    obj = bpy.data.objects.new(object_name, mesh)
-    bpy.context.collection.objects.link(obj)
-
-    # Ensure object is selected and active
-    bpy.context.view_layer.objects.active = obj
-    obj.select_set(True)
-
-    # Apply Solidify Modifier
-    solidify = obj.modifiers.new(name="Solidify", type="SOLIDIFY")
-    solidify.thickness = thickness  # Set thickness
-    solidify.offset = 1.0  # Expands outward
-
-    # Apply the modifier
-    if apply:
-        bpy.ops.object.modifier_apply(modifier=solidify.name)
-
-    # Deselect object after applying
-    obj.select_set(False)
-
-    return obj
 
 
 def make_basic_empty_object(name="empty", empty_display_type="ARROWS"):
@@ -74,9 +31,11 @@ def make_basic_pipe_object(
     b2=None,
     aperture_shape: ApertureShape = ApertureShape.ELLIPTICAL,
 ):
-    print("make_basic_pipe_object", aperture_shape)
+    print(f"make_basic_pipe_object {length=}", aperture_shape)
     # Baseline section
     aperture_shape = ApertureShape(aperture_shape)
+
+    length = max(length, 1e-6)  # TODO: better logic for zero length elements
 
     if aperture_shape == ApertureShape.ELLIPTICAL:
         section0 = ellipse_points(a, b, n=n_ellipse, a2=a2, b2=b2)
@@ -96,9 +55,8 @@ def make_basic_pipe_object(
 
     vertices, faces = build_aperture_mesh(inner_sections)
 
-    obj = create_blender_mesh_with_solidify(
-        vertices, faces, thickness, apply=True, object_name=name, mesh_name=name
-    )
+    mesh = create_solidified_mesh(vertices, faces, thickness, mesh_name=name)
+    obj = bpy.data.objects.new(name, mesh)
 
     return obj
 
@@ -137,7 +95,6 @@ def make_basic_box_object(
 
     # Create object and link to scene
     obj = bpy.data.objects.new(name, mesh)
-    # bpy.context.collection.objects.link(obj) # user should do this
 
     return obj
 
@@ -170,3 +127,116 @@ def make_basic_dipole_object(
         child.parent = obj
 
     return obj
+
+
+def load_blend_objects(blend_filepath):
+    """
+    Load all objects from a .blend file.
+
+    Parameters
+    ----------
+    blend_filepath : str
+        Absolute path to the .blend file.
+
+    Returns
+    -------
+    List[bpy.types.Object]
+        List of Blender objects loaded from the file.
+    """
+    blend_filepath = str(blend_filepath)
+    with bpy.data.libraries.load(blend_filepath, link=False) as (data_from, data_to):
+        data_to.objects = data_from.objects
+    return [obj for obj in data_to.objects if obj is not None]
+
+
+def generate_unique_name(base_name, existing_names):
+    """
+    Generate a unique object name by appending a numeric suffix if needed.
+
+    Parameters
+    ----------
+    base_name : str
+        Proposed base name for the object.
+    existing_names : set of str
+        Set of names currently in use in bpy.data.objects.
+
+    Returns
+    -------
+    str
+        A unique object name.
+    """
+    count = 1
+    new_name = base_name
+    while new_name in existing_names:
+        new_name = f"{base_name}_{count}"
+        count += 1
+    return new_name
+
+
+def add_children_from_blend(
+    parent, blend_filepath, library_cache, collection=None, copy_data=False
+):
+    """
+    Load and parent child objects from a .blend file to a parent object.
+
+    Ensures all child objects are uniquely named, unlinked from original
+    collections, and correctly parented while preserving transforms.
+    Optionally links them to a specified collection, and controls whether
+    mesh data is copied or shared.
+
+    Parameters
+    ----------
+    parent : bpy.types.Object
+        The parent object to which imported children will be attached.
+    blend_filepath : str
+        Absolute path to the .blend file.
+    library_cache : dict
+        Dictionary to cache previously loaded libraries by filepath.
+        Keys are filepaths, values are lists of previously loaded bpy objects.
+    collection : bpy.types.Collection, optional
+        The collection to link imported objects to. If None, uses context collection.
+    copy_data : bool, optional
+        If True, each object gets its own copy of the mesh data.
+        If False, objects will share the same mesh datablock.
+
+    Returns
+    -------
+    None
+    """
+    name_prefix = parent.name
+    existing_names = {obj.name for obj in bpy.data.objects}
+
+    if blend_filepath in library_cache:
+        print(f"Library already loaded: {blend_filepath}")
+        children = []
+        for source_obj in library_cache[blend_filepath]:
+            if source_obj.type == "MESH":
+                new_data = source_obj.data.copy() if copy_data else source_obj.data
+            else:
+                new_data = source_obj.data  # For empties, lights, etc.
+            new_name = generate_unique_name(
+                f"{name_prefix}_{source_obj.name}", existing_names
+            )
+            new_obj = bpy.data.objects.new(new_name, new_data)
+            new_obj.location = source_obj.location.copy()
+            new_obj.rotation_euler = source_obj.rotation_euler.copy()
+            new_obj.scale = source_obj.scale.copy()
+            children.append(new_obj)
+            existing_names.add(new_name)
+    else:
+        print(f"Loading new library: {blend_filepath}")
+        children = load_blend_objects(blend_filepath)
+        library_cache[blend_filepath] = children
+
+    print("len children", len(children))
+    target_collection = collection or bpy.context.collection
+
+    for child in children:
+        for c in list(child.users_collection):
+            c.objects.unlink(child)
+
+        target_collection.objects.link(child)
+
+        if child.parent is None:
+            child.parent = parent
+            child.matrix_parent_inverse = parent.matrix_world.inverted()

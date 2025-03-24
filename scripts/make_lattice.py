@@ -1,11 +1,15 @@
 import bpy
 import bpy_lattice
-import importlib
-from bpy_lattice.elements import load_elements_from_json
-from pathlib import Path
 import bpy_lattice.mesh
 import bpy_lattice.objects
 import bpy_lattice.elements
+
+from pathlib import Path
+import os
+import importlib
+
+from bpy_lattice.elements import load_elements_from_json
+from bpy_lattice.objects import add_children_from_blend
 
 importlib.reload(bpy_lattice)
 importlib.reload(bpy_lattice.mesh)
@@ -14,6 +18,11 @@ importlib.reload(bpy_lattice.elements)
 
 
 def remove_unused_data():
+    """
+    Remove all unused datablocks from the current Blender file.
+    This includes meshes, materials, textures, images, curves,
+    armatures, lights, and collections with zero users.
+    """
     for datablock in [
         bpy.data.meshes,
         bpy.data.materials,
@@ -22,8 +31,9 @@ def remove_unused_data():
         bpy.data.curves,
         bpy.data.armatures,
         bpy.data.lights,
+        bpy.data.collections,
     ]:
-        for block in datablock:
+        for block in list(datablock):  # use list() to avoid modifying while iterating
             if block.users == 0:
                 datablock.remove(block)
 
@@ -37,40 +47,47 @@ assert JSON_FILE.exists()
 eles = load_elements_from_json(JSON_FILE)
 
 
+library_cache = {}
+library_collection_name = "library"
+library_collection = bpy.data.collections.new(library_collection_name)
+bpy.context.scene.collection.children.link(library_collection)
+
+
+catalogue = Path(os.path.expandvars("$BLENDER_CATALOGUE"))
+assert catalogue.exists()
+
 objs = []
 for ele in eles:
+    # Make collection
+    cname = ele.__class__.__name__ + "s"
+    collection_name = cname
+    # Get or create the target collection
+    if collection_name in bpy.data.collections:
+        collection = bpy.data.collections[collection_name]
+    else:
+        collection = bpy.data.collections.new(collection_name)
+        bpy.context.scene.collection.children.link(collection)
+
     obj = ele.to_object()
+
+    bfile = None
+    if ele.cad_model:
+        bfile = Path(ele.cad_model)
+
+        if not bfile.exists():
+            bfile = catalogue / ele.cad_model
+
+        if bfile.exists():
+            print(f"Blend file exists: {bfile}")
+            add_children_from_blend(
+                obj, bfile, library_cache, collection=library_collection
+            )
+
     objs.append(obj)
 
-
-def link_object_and_children(obj, collection):
-    """
-    Recursively link an object and all of its children to the specified collection.
-    Avoids linking duplicates.
-    """
-    if obj.name not in collection.objects:
-        collection.objects.link(obj)
-    for child in obj.children:
-        link_object_and_children(child, collection)
+    collection.objects.link(obj)
+    for child in obj.children_recursive:
+        collection.objects.link(child)
 
 
-def link_objects_to_scene(objects):
-    """
-    Efficiently link a list of objects to the active scene:
-    - Links only root objects directly
-    - Recursively ensures all children are also linked to the scene's collection
-    """
-    scene_collection = bpy.context.scene.collection
-
-    # Filter out objects not in bpy.data.objects (just in case)
-    objects = [obj for obj in objects if obj.name in bpy.data.objects]
-
-    # Find root objects (those without a parent in the list)
-    roots = [obj for obj in objects if obj.parent not in objects]
-
-    for root in roots:
-        link_object_and_children(root, scene_collection)
-
-
-link_objects_to_scene(objs)
 bpy.context.view_layer.update()

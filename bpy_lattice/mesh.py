@@ -1,3 +1,6 @@
+import bpy
+import bmesh
+
 from typing import List, Tuple
 import numpy as np
 
@@ -295,3 +298,54 @@ def build_aperture_mesh(inner_sections, cap_ends=False):
         all_faces.append(tuple(reversed(last_loop)))  # End cap
 
     return all_vertices, all_faces
+
+
+def create_solidified_mesh(
+    vertices,
+    faces,
+    thickness,
+    mesh_name="SolidifiedMesh",
+):
+    """
+    Create a Blender mesh with solidified geometry using BMesh (no modifiers or linking).
+
+    Parameters
+    ----------
+    vertices : List[Tuple[float, float, float]]
+        List of vertex coordinates.
+    faces : List[Tuple[int, int, int, int]]
+        List of face indices (quads).
+    thickness : float
+        Thickness of the solidification.
+    mesh_name : str, optional
+        Name of the resulting mesh datablock.
+
+    Returns
+    -------
+    bpy.types.Mesh
+        The solidified mesh datablock (not linked to any object or scene).
+    """
+    # Create a new mesh datablock
+    mesh = bpy.data.meshes.new(mesh_name)
+
+    # Create a BMesh and build geometry
+    bm = bmesh.new()
+    bm_verts = [bm.verts.new(v) for v in vertices]
+    bm.verts.ensure_lookup_table()
+
+    for f in faces:
+        bm.faces.new([bm_verts[i] for i in f])
+    bm.faces.ensure_lookup_table()
+
+    # Apply solidify operation
+    bmesh.ops.solidify(
+        bm,
+        geom=bm.faces[:],
+        thickness=thickness,
+    )
+
+    # Write the BMesh data into the mesh datablock
+    bm.to_mesh(mesh)
+    bm.free()
+
+    return mesh

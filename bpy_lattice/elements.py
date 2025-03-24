@@ -115,6 +115,17 @@ class BeamElement(BaseElement, ABC):
     color = "grey"
 
     def to_object(self):
+        return self.to_basic_object()
+        # if self.cad_model:
+        #    return self.to_empty_object()
+        # else:
+
+    def to_empty_object(self):
+        obj = make_basic_empty_object(self.name)
+        self.align_object_location_and_rotation(obj)
+        return obj
+
+    def to_basic_object(self):
         length = max(self.length, 1e-6)
         width = max(self.width, 1e-6)
         height = max(self.height, 1e-6)
@@ -221,7 +232,7 @@ class Bend(BeamElement):
     def angle(self):
         return self.curvature * self.length
 
-    def to_object(self):
+    def to_basic_object(self):
         length = max(self.length, 1e-6)
         width = max(self.width, 1e-6)
         height = max(self.height, 1e-6)
