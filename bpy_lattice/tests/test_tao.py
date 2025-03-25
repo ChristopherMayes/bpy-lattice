@@ -1,13 +1,13 @@
 import pathlib
+import math
 
+import bpy
 import pytao
 import pytest
 
+from .conftest import LATTICES_ROOT, TEST_ARTIFACTS
 from ..interfaces.bmad import bpy_elements_from_tao
-
-
-TESTS_ROOT = pathlib.Path(__file__).resolve().parent
-LATTICES_ROOT = TESTS_ROOT / "bmad"
+from ..blend import add_elements_to_blender
 
 
 lattices = pytest.mark.parametrize(
@@ -22,6 +22,59 @@ lattices = pytest.mark.parametrize(
 
 @lattices
 def test_bpy_elements_from_tao(lattice: pathlib.Path) -> None:
-    with pytao.SubprocessTao(lattice_file=lattice) as tao:
+    with pytao.SubprocessTao(lattice_file=lattice, noplot=True) as tao:
         for ele in bpy_elements_from_tao(tao):
             print(ele)
+
+
+@lattices
+def test_render(lattice: pathlib.Path, request: pytest.FixtureRequest) -> None:
+    with pytao.SubprocessTao(lattice_file=lattice, noplot=True) as tao:
+        eles = bpy_elements_from_tao(tao)
+
+        # This command resets Blender to a new, empty state. The
+        # `use_empty=True` parameter ensures that it creates a completely empty
+        # file rather than loading the default startup file.
+        bpy.ops.wm.read_homefile(use_empty=True)
+
+        add_elements_to_blender(eles, catalogue=pathlib.Path("."))
+
+        # Set up a top-down view
+        scene = bpy.context.scene
+
+        # Create camera if it doesn't exist
+        if "Camera" not in bpy.data.objects:
+            bpy.ops.object.camera_add(location=(0, 0, 10))
+            camera = bpy.data.objects["Camera"]
+        else:
+            camera = bpy.data.objects["Camera"]
+
+        # Set camera to top-down view
+        camera.location = (0, 0, 10)
+        camera.rotation_euler = (0, 0, 0)
+
+        # Ensure the camera is looking down
+        camera.rotation_euler.x = math.radians(90)
+
+        # Set the camera as the active camera
+        scene.camera = camera
+
+        # Configure render settings
+        scene.render.resolution_x = 1920
+        scene.render.resolution_y = 1080
+        scene.render.resolution_percentage = 100
+        scene.render.image_settings.file_format = "PNG"
+
+        # Set up lighting if needed
+        if "Light" not in bpy.data.objects:
+            bpy.ops.object.light_add(type="SUN", location=(0, 0, 10))
+            # Get the active object which should be the newly created light
+            light = bpy.context.active_object
+            light.data.energy = 5.0
+
+        test_name = request.node.name.replace("[", "_").replace("]", "_")
+        output_path = TEST_ARTIFACTS / test_name
+        scene.render.filepath = str(output_path.with_suffix(".png"))
+        bpy.ops.render.render(write_still=True)
+        bpy.ops.wm.save_as_mainfile(filepath=str(output_path.with_suffix(".blend")))
+        print(f"Output saved to {output_path}*")

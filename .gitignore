@@ -105,3 +105,4 @@ venv.bak/
 .DS_Store
 
 /bpy_lattice/_version.py
+/bpy_lattice/tests/artifacts
