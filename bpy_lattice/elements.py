@@ -72,6 +72,10 @@ class BaseElement(ABC):
         d["class"] = self.__class__.__name__  # Store class type
         return d
 
+    def to_flat_dict(self) -> dict[str, Any]:
+        """Converts the dataclass to a dictionary, adding `class` for reconstruction."""
+        return _flatten_dict(self.to_dict())
+
     @classmethod
     def from_dict(cls: type[T], data: dict[str, Any]) -> T:
         """Reconstructs an object from a dictionary."""
@@ -85,6 +89,21 @@ class BaseElement(ABC):
             raise TypeError("Cannot instantiate BaseElement directly. Use a subclass.")
 
         return cls(**init_args)
+
+    @classmethod
+    def from_flat_dict(cls: type[T], data: dict[str, Any]) -> T:
+        clsname = data.get("class", cls.__name__)
+
+        cls = CLASS_MAP[clsname]
+
+        field_names = {f.name for f in fields(cls)}
+        dct = {
+            key: value
+            for key, value in _unflatten_dict(data).items()
+            if key in field_names
+        }
+
+        return cls.from_dict(dct)
 
     def to_json(self) -> str:
         """Serializes the object to a JSON string."""
@@ -253,7 +272,6 @@ class Bend(BeamElement):
         length = max(self.length, 1e-6)
         width = max(self.width, 1e-6)
         height = max(self.height, 1e-6)
-        print("here!", self.name, length, width, height, self.gap)
         obj = make_basic_dipole_object(
             name=self.name,
             length=length,
@@ -697,37 +715,28 @@ def save_elements_to_csv(elements: list[AnyElement], filename: str):
 
     # Collect all possible field names across all elements
     fieldnames = set()
-    for elem in elements:
-        fieldnames.update(elem.to_dict().keys())
+
+    data = [elem.to_flat_dict() for elem in elements]
+    for row in data:
+        fieldnames.update(set(row))
+
     fieldnames = sorted(fieldnames)  # Sort to maintain consistency
 
-    with open(filename, mode="w", newline="") as file:
-        writer = csv.DictWriter(file, fieldnames=fieldnames, extrasaction="ignore")
+    with open(filename, mode="w", newline="", encoding="utf-8") as file:
+        writer = csv.DictWriter(file, fieldnames=fieldnames)
         writer.writeheader()
-        for elem in elements:
-            row = elem.to_dict()
-            # Ensure only known fields are written (avoid missing key errors)
-            writer.writerow({field: row.get(field, "") for field in fieldnames})
+        for row in data:
+            writer.writerow(row)
 
 
 def load_elements_from_csv(filename: str) -> list[AnyElement]:
     """Loads a list of Element objects from a CSV file, ensuring type conversion."""
     elements = []
-    with open(filename, mode="w", newline="", encoding="utf-8") as file:
+    with open(filename, mode="r", newline="", encoding="utf-8") as file:
         reader = csv.DictReader(file)
 
         for row in reader:
-            class_name = row.pop("class", None)
-            if not class_name:
-                raise ValueError(f"Missing 'class' field in CSV row: {row}")
-
-            try:
-                cls = CLASS_MAP[class_name]  # Get the correct class
-            except KeyError:
-                raise ValueError(
-                    f"Unknown class type: {class_name}. Available: {list(CLASS_MAP.keys())}"
-                )
-            elements.append(cls.from_dict(row))
+            elements.append(BaseElement.from_flat_dict(row))
 
     return elements
 
@@ -742,4 +751,31 @@ def load_elements_from_json(filename: str) -> list[BaseElement]:
     """Loads a list of Element objects from a JSON file."""
     with open(filename) as file:
         data = json.load(file)
-    return [CLASS_MAP[item["class"]].from_dict(item) for item in data]
+    return [BaseElement.from_dict(item) for item in data]
+
+
+def _flatten_dict(dct: dict) -> dict:
+    res = {}
+    for key, value in dct.items():
+        if isinstance(value, dict):
+            for inner_key, inner_value in _flatten_dict(value).items():
+                res[f"{key}.{inner_key}"] = inner_value
+        else:
+            res[key] = value
+    return res
+
+
+def _unflatten_dict(dct: dict) -> dict:
+    res = {}
+    for key, value in dct.items():
+        if "." in key:
+            parts = key.split(".")
+            current = res
+            for part in parts[:-1]:
+                if part not in current:
+                    current[part] = {}
+                current = current[part]
+            current[parts[-1]] = value
+        else:
+            res[key] = value
+    return res

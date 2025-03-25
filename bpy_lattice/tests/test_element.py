@@ -13,6 +13,8 @@ from bpy_lattice.elements import (
     get_element_class,
     load_elements_from_json,
     save_elements_to_json,
+    load_elements_from_csv,
+    save_elements_to_csv,
 )
 
 
@@ -133,6 +135,23 @@ def test_save_and_load_json_roundtrip(tmp_path) -> None:
     file = tmp_path / "elements.json"
     save_elements_to_json(elements, file)
     loaded = load_elements_from_json(file)
+    assert len(loaded) == 2
+    assert isinstance(loaded[0], Element)
+    assert isinstance(loaded[1], Bend)
+    assert loaded[1].curvature == 0.1
+
+
+def test_save_and_load_csv_roundtrip(tmp_path) -> None:
+    elements = [Element(name="e1"), Bend(name="bend", curvature=0.1)]
+    file = tmp_path / "elements.csv"
+    save_elements_to_csv(elements, file)
+
+    print("CSV contents:")
+    with open(file) as fp:
+        print(fp.read())
+    print("---")
+
+    loaded = load_elements_from_csv(file)
     assert len(loaded) == 2
     assert isinstance(loaded[0], Element)
     assert isinstance(loaded[1], Bend)
