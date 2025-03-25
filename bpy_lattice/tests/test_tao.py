@@ -41,19 +41,20 @@ def test_render(lattice: pathlib.Path, request: pytest.FixtureRequest) -> None:
         # Set up a top-down view
         scene = bpy.context.scene
 
-        # Create camera if it doesn't exist
-        if "Camera" not in bpy.data.objects:
-            bpy.ops.object.camera_add(location=(0, 0, 10))
+        bpy.ops.object.camera_add(location=(0, 0, 10))
 
-        camera = bpy.data.objects["Camera"]
-
-        # Set camera to top-down view
-        camera.location = (0, 0, 10)
-        # Ensure the camera is looking down
+        camera = bpy.context.active_object
         camera.rotation_euler = (0, 0, 0)
-
-        # Set the camera as the active camera
         scene.camera = camera
+
+        # Select all objects to make them visible in camera view
+        bpy.ops.object.select_all(action="SELECT")
+
+        # Frame all objects to be visible in the camera view
+        for area in bpy.context.screen.areas:
+            if area.type == "VIEW_3D":
+                with bpy.context.temp_override(area=area, region=area.regions[-1]):
+                    bpy.ops.view3d.camera_to_view_selected()
 
         # Configure render settings
         scene.render.resolution_x = 1920
