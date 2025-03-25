@@ -1,0 +1,36 @@
+no_digested
+beginning[beta_a] = 1
+beginning[beta_b] = 1
+beginning[e_tot] = 1e9
+parameter[geometry] = open
+
+
+
+marker1: marker
+drift1: drift, L = 1
+ecollimator1: ecollimator, L = 1
+instrument1: instrument, L =1
+lcavity1: lcavity, L =1
+pipe1: pipe, L = 1
+quadrupole1: quadrupole, L = 1
+rcollimator1: rcollimator, L = 1
+sbend1: sbend, L = 1, angle = pi/4
+sextupole1: sextupole, L = 1
+solenoid1: solenoid, L = 1
+thick_multipole1: thick_multipole, L = 1
+wiggler1: wiggler, L = 1, l_period = 0.1, n_period = 10
+
+
+
+lat: line = (marker1,
+drift1,
+ecollimator1,
+instrument1,
+lcavity1,
+pipe1,
+quadrupole1,
+rcollimator1,
+sbend1,
+thick_multipole1,
+wiggler1)
+use, lat
