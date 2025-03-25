@@ -71,5 +71,11 @@ def test_render(lattice: pathlib.Path, request: pytest.FixtureRequest) -> None:
         output_path = TEST_ARTIFACTS / test_name
         scene.render.filepath = str(output_path.with_suffix(".png"))
         bpy.ops.render.render(write_still=True)
-        bpy.ops.wm.save_as_mainfile(filepath=str(output_path.with_suffix(".blend")))
+
+        blend_fn = output_path.with_suffix(".blend")
+
+        if blend_fn.exists():
+            blend_fn.unlink()
+
+        bpy.ops.wm.save_as_mainfile(filepath=str(blend_fn))
         print(f"Output saved to {output_path}*")
