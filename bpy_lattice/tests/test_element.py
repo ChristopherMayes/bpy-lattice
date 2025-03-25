@@ -2,9 +2,11 @@ import pytest
 
 from bpy_lattice.elements import (
     CLASS_MAP,
+    BaseElement,
     BeginningEle,
     Bend,
     Element,
+    get_all_subclasses,
     get_element_class,
     load_elements_from_json,
     save_elements_to_json,
@@ -19,10 +21,11 @@ def test_to_dict_includes_class():
 
 
 def test_from_dict_reconstructs_element():
-    d = {"name": "abc", "class": "Element"}
-    obj = Element.from_dict(d)
+    d = {"name": "abc", "x": "3", "class": "Element"}
+    obj = BaseElement.from_dict(d)
     assert isinstance(obj, Element)
     assert obj.name == "abc"
+    assert obj.x == 3.0
 
 
 def test_to_json_and_from_json():
@@ -52,11 +55,42 @@ def test_get_element_class_failure():
 
 
 def test_class_map_contains_all_subclasses():
-    from bpy_lattice.elements import BaseElement, get_all_subclasses
-
     subclasses = get_all_subclasses(BaseElement)
     for cls in subclasses:
         assert cls.__name__ in CLASS_MAP
+
+
+element_classees = pytest.mark.parametrize(
+    ("cls",),
+    [
+        pytest.param(cls, id=cls.__name__)
+        for cls in sorted(
+            BaseElement.available_classes().values(), key=lambda cls: cls.__name__
+        )
+        if cls not in {BaseElement}
+    ],
+)
+
+
+@element_classees
+def test_default_instantiate(cls: type[BaseElement]):
+    cls()
+
+
+@element_classees
+def test_dict_roundtrip(cls: type[BaseElement]):
+    instance = cls()
+    data = instance.to_dict()
+    result = BaseElement.from_dict(data)
+    assert instance == result
+
+
+@element_classees
+def test_json_roundtrip(cls: type[BaseElement]):
+    instance = cls()
+    data = instance.to_json()
+    result = BaseElement.from_json(data)
+    assert instance == result
 
 
 def test_save_and_load_json_roundtrip(tmp_path):

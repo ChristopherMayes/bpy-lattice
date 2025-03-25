@@ -1,7 +1,7 @@
 import csv
 import json
 from abc import ABC
-from dataclasses import MISSING, asdict, dataclass, field, fields, is_dataclass
+from dataclasses import asdict, dataclass, field, fields, is_dataclass
 from enum import StrEnum
 
 # Principles:
@@ -75,21 +75,14 @@ class BaseElement(ABC):
     @classmethod
     def from_dict(cls: type[T], data: dict[str, Any]) -> T:
         """Reconstructs an object from a dictionary."""
+        init_args = data.copy()
+        clsname = init_args.pop("class", None)
+
+        if clsname:
+            cls = CLASS_MAP[clsname]
+
         if cls is BaseElement:
             raise TypeError("Cannot instantiate BaseElement directly. Use a subclass.")
-
-        data_copy = data.copy()
-        data_copy.pop("class", None)
-
-        # Reconstruct nested dataclass fields
-        init_args = {}
-        for f in fields(cls):
-            value = data_copy.get(f.name, MISSING)
-            if value is not MISSING:
-                if is_dataclass(f.type) and isinstance(value, dict):
-                    init_args[f.name] = f.type(**value)
-                else:
-                    init_args[f.name] = value
 
         return cls(**init_args)
 
@@ -673,25 +666,31 @@ def _cast_values(data: dict[str, Any], cls: type[AnyElement]) -> dict[str, Any]:
 
         target_type = field_types[key]
 
-        # Convert Enums
         if issubclass(target_type, StrEnum):
             casted_data[key] = target_type(value) if value else target_type()
 
-        # Convert numeric types
         elif target_type in (int, float):
+            # Convert numeric types
             try:
                 casted_data[key] = target_type(value) if value else target_type()
             except ValueError:
                 casted_data[key] = target_type()  # Use default if conversion fails
 
-        # Default case (str, bool, etc.)
+        elif is_dataclass(target_type):
+            if isinstance(value, dict):
+                casted_data[key] = target_type(**value)
+            else:
+                raise ValueError(
+                    f"Expected 'dict' for dataclass of type `{target_type.__name__}` got {type(value).__name__}"
+                )
         else:
+            # Default case (str, bool, etc.)
             casted_data[key] = value
 
     return casted_data
 
 
-def save_elements_to_csv(elements: list[Element], filename: str):
+def save_elements_to_csv(elements: list[AnyElement], filename: str):
     """Saves a list of Element objects to a CSV file, dynamically handling missing fields."""
     if not elements:
         raise ValueError("Element list is empty. Cannot save to CSV.")
@@ -711,7 +710,7 @@ def save_elements_to_csv(elements: list[Element], filename: str):
             writer.writerow({field: row.get(field, "") for field in fieldnames})
 
 
-def load_elements_from_csv(filename: str) -> list[Element]:
+def load_elements_from_csv(filename: str) -> list[AnyElement]:
     """Loads a list of Element objects from a CSV file, ensuring type conversion."""
     elements = []
     with open(filename, mode="w", newline="", encoding="utf-8") as file:
