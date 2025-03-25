@@ -1,5 +1,6 @@
+from math import atan2, cos, pi, sin, sqrt
+
 import bpy
-from math import sin, cos, pi, sqrt, atan2
 
 from bpy_lattice import materials
 

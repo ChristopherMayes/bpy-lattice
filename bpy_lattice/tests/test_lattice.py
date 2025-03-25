@@ -1,8 +1,10 @@
-from bpy_lattice.lattice import ele_object
-from bpy_lattice.elements import Element, SBend, Pipe, Wiggler
+import pytest
+
+from ..elements import Element, Pipe, Bend, Undulator
+from ..lattice import ele_object
 
 
-def test_ele_object():
-    for ele in (Element(), SBend(), Pipe(), Wiggler()):
-        ele = Element()
-        ele_object(ele, None)
+@pytest.mark.parametrize("element_class", [Element, Bend, Pipe, Undulator])
+def test_ele_object(element_class):
+    ele = element_class()
+    ele_object(ele)

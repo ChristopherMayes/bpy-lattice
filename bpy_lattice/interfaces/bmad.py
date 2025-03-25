@@ -1,16 +1,16 @@
 import argparse
 import logging
+from enum import StrEnum
 
 # from pytao import Tao
 from ..elements import (
     Aperture,
     Bend,
-    BeamElement,
     get_element_class,
     save_elements_to_json,
 )
 from ..types import ApertureShape
-from enum import StrEnum
+
 #
 #
 # apertures will be separated from elements:

@@ -1,12 +1,13 @@
 import pytest
+
 from bpy_lattice.elements import (
-    Element,
-    Bend,
-    BeginningEle,
-    get_element_class,
-    save_elements_to_json,
-    load_elements_from_json,
     CLASS_MAP,
+    BeginningEle,
+    Bend,
+    Element,
+    get_element_class,
+    load_elements_from_json,
+    save_elements_to_json,
 )
 
 
@@ -51,7 +52,7 @@ def test_get_element_class_failure():
 
 
 def test_class_map_contains_all_subclasses():
-    from bpy_lattice.elements import get_all_subclasses, BaseElement
+    from bpy_lattice.elements import BaseElement, get_all_subclasses
 
     subclasses = get_all_subclasses(BaseElement)
     for cls in subclasses:

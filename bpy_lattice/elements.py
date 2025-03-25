@@ -1,33 +1,27 @@
+from __future__ import annotations
+
 import csv
 import json
-from dataclasses import dataclass, asdict, fields, is_dataclass, MISSING
-from typing import List, Dict, Any, Type
-import inspect
-from typing import get_type_hints
 from abc import ABC
-from .types import ApertureShape
-
-from dataclasses import field
+from dataclasses import MISSING, asdict, dataclass, field, fields, is_dataclass
 from enum import StrEnum
-
-from bpy_lattice.objects import (
-    make_basic_box_object,
-    make_basic_dipole_object,
-    make_basic_pipe_object,
-    make_basic_empty_object,
-)
-
-from bpy_lattice.materials import assign_color_material
 
 # Principles:
 # simple data structures only (no nested objects)
 # enums when possible
 # serialize/deserialize to dict and include the class name
+from typing import Any, TypeVar
 
+from .materials import assign_color_material
+from .objects import (
+    make_basic_box_object,
+    make_basic_dipole_object,
+    make_basic_empty_object,
+    make_basic_pipe_object,
+)
+from .types import ApertureShape
 
-from typing import Optional
-from dataclasses import dataclass
-from abc import ABC
+T = TypeVar("T", bound="BaseElement")
 
 
 @dataclass
@@ -70,14 +64,14 @@ class BaseElement(ABC):
     description: str = ""
     parent: str = ""
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Converts the dataclass to a dictionary, adding `class` for reconstruction."""
         d = asdict(self)
         d["class"] = self.__class__.__name__  # Store class type
         return d
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "BaseElement":
+    def from_dict(cls: type[T], data: dict[str, Any]) -> T:
         """Reconstructs an object from a dictionary."""
         if cls is BaseElement:
             raise TypeError("Cannot instantiate BaseElement directly. Use a subclass.")
@@ -102,12 +96,12 @@ class BaseElement(ABC):
         return json.dumps(self.to_dict())
 
     @classmethod
-    def from_json(cls, json_str: str) -> "BaseElement":
+    def from_json(cls: type[T], json_str: str) -> T:
         """Deserializes an object from a JSON string."""
         return cls.from_dict(json.loads(json_str))
 
     @classmethod
-    def available_classes(cls) -> Dict[str, Type["BaseElement"]]:
+    def available_classes(cls) -> dict[str, type[AnyElement]]:
         """Returns a dictionary of all registered element types."""
         return CLASS_MAP
 
@@ -138,11 +132,13 @@ class BeamElement(BaseElement, ABC):
     Abstract Beam element with outer physical dimensions and an aperture
     """
 
+    # TODO: maybe move up a level?
     length: float = 1
     width: float = 0.2
     height: float = 0.2
-    aperture: Aperture = field(default_factory=Aperture)
     color = "grey"
+
+    aperture: Aperture = field(default_factory=Aperture)
 
     def to_object(self):
         return self.to_basic_object()
@@ -179,7 +175,6 @@ class BeamElement(BaseElement, ABC):
 
     def aperture_object(self, suffix="_aperture"):
         aperture = self.aperture
-        print(aperture)
         if aperture.x1_limit + aperture.x2_limit == 0:
             return None
         if aperture.y1_limit + aperture.y2_limit == 0:
@@ -652,12 +647,12 @@ def get_all_subclasses(cls) -> set[type[AnyElement]]:
     return subclasses
 
 
-CLASS_MAP: Dict[str, Type[AnyElement]] = {
+CLASS_MAP: dict[str, type[AnyElement]] = {
     cls.__name__: cls for cls in get_all_subclasses(BaseElement)
 }
 
 
-def get_element_class(class_name: str) -> Type[AnyElement]:
+def get_element_class(class_name: str) -> type[AnyElement]:
     """Safely retrieves a BaseElement subclass by name."""
     cls = CLASS_MAP.get(class_name)
     if cls is None:
@@ -667,7 +662,7 @@ def get_element_class(class_name: str) -> Type[AnyElement]:
     return cls
 
 
-def cast_values(data: Dict[str, Any], cls: Type[Element]) -> Dict[str, Any]:
+def cast_values(data: dict[str, Any], cls: type[Element]) -> dict[str, Any]:
     """Casts dictionary values to the correct types based on the dataclass fields."""
     casted_data = {}
     field_types = {f.name: f.type for f in fields(cls)}
@@ -696,7 +691,7 @@ def cast_values(data: Dict[str, Any], cls: Type[Element]) -> Dict[str, Any]:
     return casted_data
 
 
-def save_elements_to_csv(elements: List[Element], filename: str):
+def save_elements_to_csv(elements: list[Element], filename: str):
     """Saves a list of Element objects to a CSV file, dynamically handling missing fields."""
     if not elements:
         raise ValueError("Element list is empty. Cannot save to CSV.")
@@ -716,44 +711,36 @@ def save_elements_to_csv(elements: List[Element], filename: str):
             writer.writerow({field: row.get(field, "") for field in fieldnames})
 
 
-def load_elements_from_csv(filename: str) -> List[Element]:
+def load_elements_from_csv(filename: str) -> list[Element]:
     """Loads a list of Element objects from a CSV file, ensuring type conversion."""
     elements = []
     with open(filename, mode="w", newline="", encoding="utf-8") as file:
         reader = csv.DictReader(file)
 
         for row in reader:
-            print(row)
-            class_name = row.get("class")  # Ensure "class" is read before modification
+            class_name = row.pop("class", None)
             if not class_name:
                 raise ValueError(f"Missing 'class' field in CSV row: {row}")
 
-            if class_name not in CLASS_MAP:
+            try:
+                cls = CLASS_MAP[class_name]  # Get the correct class
+            except KeyError:
                 raise ValueError(
                     f"Unknown class type: {class_name}. Available: {list(CLASS_MAP.keys())}"
                 )
+            elements.append(cls.from_dict(row))
 
-            cls = CLASS_MAP[class_name]  # Get the correct class
-
-            row_copy = row.copy()  # Preserve "class" before casting
-            row_copy.pop("class", None)  # Remove before passing to `from_dict()`
-
-            # Cast values to correct types
-            casted_row = cast_values(row_copy, cls)
-
-            # Call from_dict() on the correct class
-            elements.append(cls.from_dict(casted_row))
     return elements
 
 
-def save_elements_to_json(elements: List[BaseElement], filename: str):
+def save_elements_to_json(elements: list[BaseElement], filename: str):
     """Saves a list of Element objects to a JSON file."""
     with open(filename, "w") as file:
         json.dump([elem.to_dict() for elem in elements], file, indent=4)
 
 
-def load_elements_from_json(filename: str) -> List[BaseElement]:
+def load_elements_from_json(filename: str) -> list[BaseElement]:
     """Loads a list of Element objects from a JSON file."""
-    with open(filename, "r") as file:
+    with open(filename) as file:
         data = json.load(file)
     return [CLASS_MAP[item["class"]].from_dict(item) for item in data]
