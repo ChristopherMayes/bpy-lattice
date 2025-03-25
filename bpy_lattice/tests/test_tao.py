@@ -1,5 +1,4 @@
 import pathlib
-import math
 
 import bpy
 import pytao
@@ -45,16 +44,13 @@ def test_render(lattice: pathlib.Path, request: pytest.FixtureRequest) -> None:
         # Create camera if it doesn't exist
         if "Camera" not in bpy.data.objects:
             bpy.ops.object.camera_add(location=(0, 0, 10))
-            camera = bpy.data.objects["Camera"]
-        else:
-            camera = bpy.data.objects["Camera"]
+
+        camera = bpy.data.objects["Camera"]
 
         # Set camera to top-down view
         camera.location = (0, 0, 10)
-        camera.rotation_euler = (0, 0, 0)
-
         # Ensure the camera is looking down
-        camera.rotation_euler.x = math.radians(90)
+        camera.rotation_euler = (0, 0, 0)
 
         # Set the camera as the active camera
         scene.camera = camera
@@ -65,12 +61,11 @@ def test_render(lattice: pathlib.Path, request: pytest.FixtureRequest) -> None:
         scene.render.resolution_percentage = 100
         scene.render.image_settings.file_format = "PNG"
 
-        # Set up lighting if needed
-        if "Light" not in bpy.data.objects:
-            bpy.ops.object.light_add(type="SUN", location=(0, 0, 10))
-            # Get the active object which should be the newly created light
-            light = bpy.context.active_object
-            light.data.energy = 5.0
+        # if "Light" not in bpy.data.objects:
+        bpy.ops.object.light_add(type="SUN", location=(0, 0, 10))
+        light = bpy.context.active_object
+        light.data.energy = 5.0
+        light.rotation_euler = camera.rotation_euler
 
         test_name = request.node.name.replace("[", "_").replace("]", "_")
         output_path = TEST_ARTIFACTS / test_name
