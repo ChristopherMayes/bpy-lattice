@@ -1,8 +1,11 @@
+from unittest.mock import Mock
+
 import pytest
 
 from bpy_lattice.elements import (
     CLASS_MAP,
     BaseElement,
+    BeamElement,
     BeginningEle,
     Bend,
     Element,
@@ -71,14 +74,25 @@ element_classees = pytest.mark.parametrize(
     ],
 )
 
+beam_element_classees = pytest.mark.parametrize(
+    ("cls",),
+    [
+        pytest.param(cls, id=cls.__name__)
+        for cls in sorted(
+            BaseElement.available_classes().values(), key=lambda cls: cls.__name__
+        )
+        if issubclass(cls, BeamElement)
+    ],
+)
+
 
 @element_classees
-def test_default_instantiate(cls: type[BaseElement]):
+def test_default_instantiate(cls: type[BaseElement]) -> None:
     cls()
 
 
 @element_classees
-def test_dict_roundtrip(cls: type[BaseElement]):
+def test_dict_roundtrip(cls: type[BaseElement]) -> None:
     instance = cls()
     data = instance.to_dict()
     result = BaseElement.from_dict(data)
@@ -86,14 +100,35 @@ def test_dict_roundtrip(cls: type[BaseElement]):
 
 
 @element_classees
-def test_json_roundtrip(cls: type[BaseElement]):
+def test_json_roundtrip(cls: type[BaseElement]) -> None:
     instance = cls()
     data = instance.to_json()
     result = BaseElement.from_json(data)
     assert instance == result
 
 
-def test_save_and_load_json_roundtrip(tmp_path):
+@beam_element_classees
+def test_align_object_location_and_rotation(cls: type[BeamElement]) -> None:
+    obj = Mock()
+
+    instance = cls()
+    instance.align_object_location_and_rotation(obj)
+    assert obj.rotation_euler.z == instance.theta
+    assert obj.rotation_euler.y == -instance.phi
+    assert obj.rotation_euler.x == instance.psi
+    assert obj.location == (instance.z, instance.x, instance.y)
+
+
+@beam_element_classees
+def test_to_object_smoke(cls: type[BeamElement]) -> None:
+    instance = cls()
+    instance.to_empty_object()
+    instance.to_object()
+    instance.to_basic_object()
+    instance.aperture_object()
+
+
+def test_save_and_load_json_roundtrip(tmp_path) -> None:
     elements = [Element(name="e1"), Bend(name="bend", curvature=0.1)]
     file = tmp_path / "elements.json"
     save_elements_to_json(elements, file)
