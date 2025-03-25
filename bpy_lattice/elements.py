@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import csv
 import json
 from abc import ABC
@@ -64,6 +62,10 @@ class BaseElement(ABC):
     description: str = ""
     parent: str = ""
 
+    def __post_init__(self):
+        for attr, value in _cast_values(asdict(self), type(self)).items():
+            setattr(self, attr, value)
+
     def to_dict(self) -> dict[str, Any]:
         """Converts the dataclass to a dictionary, adding `class` for reconstruction."""
         d = asdict(self)
@@ -101,7 +103,7 @@ class BaseElement(ABC):
         return cls.from_dict(json.loads(json_str))
 
     @classmethod
-    def available_classes(cls) -> dict[str, type[AnyElement]]:
+    def available_classes(cls) -> dict[str, type["AnyElement"]]:
         """Returns a dictionary of all registered element types."""
         return CLASS_MAP
 
@@ -132,13 +134,11 @@ class BeamElement(BaseElement, ABC):
     Abstract Beam element with outer physical dimensions and an aperture
     """
 
-    # TODO: maybe move up a level?
+    aperture: Aperture = field(default_factory=Aperture)
     length: float = 1
     width: float = 0.2
     height: float = 0.2
     color = "grey"
-
-    aperture: Aperture = field(default_factory=Aperture)
 
     def to_object(self):
         return self.to_basic_object()
@@ -662,7 +662,7 @@ def get_element_class(class_name: str) -> type[AnyElement]:
     return cls
 
 
-def cast_values(data: dict[str, Any], cls: type[Element]) -> dict[str, Any]:
+def _cast_values(data: dict[str, Any], cls: type[AnyElement]) -> dict[str, Any]:
     """Casts dictionary values to the correct types based on the dataclass fields."""
     casted_data = {}
     field_types = {f.name: f.type for f in fields(cls)}
