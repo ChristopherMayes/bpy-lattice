@@ -300,14 +300,20 @@ def build_aperture_mesh(inner_sections, cap_ends=False):
     return all_vertices, all_faces
 
 
-def create_solidified_mesh(
-    vertices,
-    faces,
-    thickness,
-    mesh_name="SolidifiedMesh",
-):
+def is_open_surface(bm):
     """
-    Create a Blender mesh with solidified geometry using BMesh (no modifiers or linking).
+    Simple check: if any edge is used by fewer than 2 faces, it's probably open.
+    """
+    for e in bm.edges:
+        if len(e.link_faces) < 2:
+            return True
+    return False
+
+
+def create_solidified_mesh(vertices, faces, thickness, mesh_name="SolidifiedMesh"):
+    """
+    Create a solidified mesh by offsetting along vertex normals (extrude outward only).
+    Assumes input normals are pointing in the desired outward direction.
 
     Parameters
     ----------
@@ -325,27 +331,46 @@ def create_solidified_mesh(
     bpy.types.Mesh
         The solidified mesh datablock (not linked to any object or scene).
     """
-    # Create a new mesh datablock
     mesh = bpy.data.meshes.new(mesh_name)
-
-    # Create a BMesh and build geometry
     bm = bmesh.new()
-    bm_verts = [bm.verts.new(v) for v in vertices]
+
+    # Create base vertices and faces
+    base_verts = [bm.verts.new(v) for v in vertices]
+    bm.verts.ensure_lookup_table()
+    for f in faces:
+        bm.faces.new([base_verts[i] for i in f])
+    bm.faces.ensure_lookup_table()
+    bm.normal_update()
+
+    # Store vertex normals and offset top verts outward
+    vert_normals = {v: v.normal.copy() for v in bm.verts[: len(vertices)]}
+    top_verts = [
+        bm.verts.new(v.co + vert_normals[v] * thickness)
+        for v in bm.verts[: len(vertices)]
+    ]
     bm.verts.ensure_lookup_table()
 
+    # Back face (outer shell)
     for f in faces:
-        bm.faces.new([bm_verts[i] for i in f])
-    bm.faces.ensure_lookup_table()
+        bm.faces.new([top_verts[i] for i in reversed(f)])
 
-    # Apply solidify operation
-    bmesh.ops.solidify(
-        bm,
-        geom=bm.faces[:],
-        thickness=thickness,
-    )
+    # Side walls (only once per edge)
+    seen_edges = set()
+    for f in faces:
+        count = len(f)
+        for i in range(count):
+            i1, i2 = f[i], f[(i + 1) % count]
+            edge_key = tuple(sorted((i1, i2)))
+            if edge_key in seen_edges:
+                continue
+            seen_edges.add(edge_key)
 
-    # Write the BMesh data into the mesh datablock
+            v1b, v2b = base_verts[i1], base_verts[i2]
+            v2t, v1t = top_verts[i2], top_verts[i1]
+            bm.faces.new([v1b, v2b, v2t, v1t])
+
+    bm.normal_update()
     bm.to_mesh(mesh)
     bm.free()
-
+    mesh.update()
     return mesh
