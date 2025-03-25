@@ -2,6 +2,8 @@ import csv
 import json
 from dataclasses import dataclass, asdict, fields, is_dataclass, MISSING
 from typing import List, Dict, Any, Type
+import inspect
+from typing import get_type_hints
 from abc import ABC
 from .types import ApertureShape
 
@@ -23,10 +25,38 @@ from bpy_lattice.materials import assign_color_material
 # serialize/deserialize to dict and include the class name
 
 
+from typing import Optional
+from dataclasses import dataclass
+from abc import ABC
+
+
 @dataclass
 class BaseElement(ABC):
     """
     Abstract base class for all element types.
+
+    Attributes
+    ----------
+    name : str
+        The name of the element.
+    x : float
+        X-coordinate position.
+    y : float
+        Y-coordinate position.
+    z : float
+        Z-coordinate position.
+    theta : float
+        Rotation angle around x-axis in radians.
+    phi : float
+        Rotation angle around y-axis in radians.
+    psi : float
+        Rotation angle around z-axis in radians.
+    cad_model : str
+        Path or reference to CAD model file.
+    description : str
+        Text description of the element.
+    parent : str
+        Name of the parent element.
     """
 
     name: str = ""
@@ -129,7 +159,6 @@ class BeamElement(BaseElement, ABC):
         length = max(self.length, 1e-6)
         width = max(self.width, 1e-6)
         height = max(self.height, 1e-6)
-        print("here!", self.name, length, width, height)
         obj = make_basic_box_object(
             name=self.name, length=length, width=width, height=height
         )
@@ -574,7 +603,48 @@ class Undulator(BeamElement):
 #    length: float = 0.0
 
 
-def get_all_subclasses(cls):
+AnyElement = (
+    BeamElement
+    | ACKicker
+    | BeamBeam
+    | BeginningEle
+    | Bend
+    | Collimator
+    | Converter
+    | CrabCavity
+    | Crystal
+    | Drift
+    | EGun
+    | Fiducial
+    | FloorShift
+    | Foil
+    | Fork
+    | Girder
+    | Instrument
+    | Kicker
+    | LCavity
+    | Marker
+    # | Mask
+    | Match
+    | Mirror
+    | Multipole
+    | MultiLayerMirror
+    # | NullEle
+    | Octupole
+    | Patch
+    | Pipe
+    | Quadrupole
+    | RFCavity
+    | Sextupole
+    | Solenoid
+    | Taylor
+    | Undulator
+    # | UnionEle
+    # | Wiggler
+)
+
+
+def get_all_subclasses(cls) -> set[type[AnyElement]]:
     """Recursively finds all subclasses of a given class."""
     subclasses = set(cls.__subclasses__())
     for subclass in cls.__subclasses__():
@@ -582,12 +652,12 @@ def get_all_subclasses(cls):
     return subclasses
 
 
-CLASS_MAP: Dict[str, Type[BaseElement]] = {
+CLASS_MAP: Dict[str, Type[AnyElement]] = {
     cls.__name__: cls for cls in get_all_subclasses(BaseElement)
 }
 
 
-def get_element_class(class_name: str) -> Type[BaseElement]:
+def get_element_class(class_name: str) -> Type[AnyElement]:
     """Safely retrieves a BaseElement subclass by name."""
     cls = CLASS_MAP.get(class_name)
     if cls is None:

@@ -2,7 +2,13 @@ import argparse
 import logging
 
 # from pytao import Tao
-from ..elements import Aperture, BeamElement, get_element_class, save_elements_to_json
+from ..elements import (
+    Aperture,
+    Bend,
+    BeamElement,
+    get_element_class,
+    save_elements_to_json,
+)
 from ..types import ApertureShape
 from enum import StrEnum
 #
@@ -115,11 +121,11 @@ EleKey_TO_CLASSNAME = {
 }
 
 
-def element_from_key(key: EleKey):
+def element_class_from_key(key: EleKey):
     key = EleKey(key)
     if key not in EleKey_TO_CLASSNAME:
         raise NotImplementedError(key)
-    return get_element_class(EleKey_TO_CLASSNAME[key])()
+    return get_element_class(EleKey_TO_CLASSNAME[key])
 
 
 def get_ele_data(tao, ele_id):
@@ -177,36 +183,44 @@ def get_ele_data(tao, ele_id):
     return info
 
 
-def set_basic_element_from_tao_data(ele: BeamElement, data):
+def get_basic_element_kwargs_from_tao_data(data):
     """
     Sets basic element data from tao data.
     """
-    ele.name = data["name"]
-    ele.x = data["floor_x"]
-    ele.y = data["floor_y"]
-    ele.z = data["floor_z"]
-    ele.theta = data["floor_theta"]
-    ele.phi = data["floor_phi"]
-    ele.psi = data["floor_psi"]
-
     descrip = data["descrip"]
     cad_model = descrip.split("3DMODEL=")[-1].split(",")[0]  # Extract before the comma
-    ele.cad_model = cad_model
     if cad_model:
-        ele.description = descrip.replace(cad_model, "")
+        description = descrip.replace(cad_model, "")
     else:
-        ele.description = descrip
+        description = descrip
+
+    return dict(
+        name=str(data["name"]),
+        x=float(data["floor_x"]),
+        y=float(data["floor_y"]),
+        z=float(data["floor_z"]),
+        theta=float(data["floor_theta"]),
+        phi=float(data["floor_phi"]),
+        psi=float(data["floor_psi"]),
+        description=description,
+        cad_model=cad_model,
+    )
 
 
-def set_aperture_from_tao_data(aperture: Aperture, data):
+def get_aperture_from_tao_data(data):
     """
     Sets Pipe specfic data from tao data
     """
-    aperture.type = ApertureShape(data["aperture_type"].lower())
-    aperture.x1_limit = data["x1_limit"]
-    aperture.x2_limit = data["x2_limit"]
-    aperture.y1_limit = data["y1_limit"]
-    aperture.y2_limit = data["y2_limit"]
+
+    return Aperture(
+        shape=ApertureShape(data["aperture_type"].lower()),
+        x1_limit=float(data["x1_limit"]),
+        x2_limit=float(data["x2_limit"]),
+        y1_limit=float(data["y1_limit"]),
+        y2_limit=float(data["y2_limit"]),
+        thickness=0.0,  # Not available in Tao
+        material="",  # Not available in Tao
+    )
 
 
 def bpy_element_from_tao(tao, ele_id):
@@ -235,6 +249,19 @@ def bpy_element_from_tao(tao, ele_id):
     return bpy_element_from_tao_data(data)
 
 
+def get_length_from_element(key: EleKey, data):
+    if key in (EleKey.BEGINNING_ELE, EleKey.FIDUCIAL):
+        return None
+
+    # zero-length elements
+    if key in (EleKey.GKICKER,):
+        return 1e-6
+    if "l" not in data:
+        raise AttributeError(f"'l' missing from {key}")
+
+    return data["l"]
+
+
 def bpy_element_from_tao_data(data):
     # Cast to proper EleKey
     key = EleKey(data["key"])
@@ -243,30 +270,29 @@ def bpy_element_from_tao_data(data):
     if key in (EleKey.OVERLAY,):
         return None
 
-    ele = element_from_key(key)
-    set_basic_element_from_tao_data(ele, data)
+    ele_cls = element_class_from_key(key)
+    basic_kw = get_basic_element_kwargs_from_tao_data(data)
 
-    # No aperture eles
-    if key in (EleKey.BEGINNING_ELE, EleKey.FIDUCIAL):
-        return ele
+    length = get_length_from_element(key, data)
 
-    # zero-length elements
-    if key in (EleKey.GKICKER,):
-        length = 1e-6
-    elif "l" not in data:
-        raise AttributeError(f"'l' missing from {key}")
-    else:
-        length = data["l"]
-    ele.length = length
+    if length is None:
+        return ele_cls(**basic_kw)
 
-    set_aperture_from_tao_data(ele.aperture, data)
+    aperture = get_aperture_from_tao_data(data)
 
-    if key == EleKey.SBEND:
-        ele.curvature = data["g"]
-        ele.edge_angle1 = data["e1"]
-        ele.edge_angle2 = data["e2"]
+    if ele_cls is Bend:
+        return ele_cls(
+            **basic_kw,
+            aperture=aperture,
+            curvature=float(data["g"]),
+            edge_angle1=float(data["e1"]),
+            edge_angle2=float(data["e2"]),
+        )
 
-    return ele
+    return ele_cls(
+        **basic_kw,
+        aperture=aperture,
+    )
 
 
 def bpy_elements_from_tao(
