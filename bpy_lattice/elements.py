@@ -206,6 +206,7 @@ class BeamElement(BaseElement, ABC):
             b2=aperture.y2_limit,
             curvature=curvature,
             thickness=aperture.thickness,
+            aperture_shape=aperture.shape,
         )
 
         return obj
