@@ -1,12 +1,12 @@
 import bpy
-
 import numpy as np
+
 from .mesh import (
     build_aperture_mesh,
-    rectangle_points,
-    ellipse_points,
-    revolve_section,
     create_solidified_mesh,
+    ellipse_points,
+    rectangle_points,
+    revolve_section,
 )
 from .types import ApertureShape
 
@@ -20,15 +20,15 @@ def make_basic_empty_object(name="empty", empty_display_type="ARROWS"):
 
 def make_basic_pipe_object(
     name="basic_pipe",
-    length=1,
-    curvature=0,
-    a=0.1,
-    b=0.04,
-    n=None,
-    thickness=0.01,
-    n_ellipse=30,
-    a2=None,
-    b2=None,
+    length: float = 1,
+    curvature: float = 0,
+    a: float = 0.1,
+    b: float = 0.04,
+    n: float | None = None,
+    thickness: float = 0.01,
+    n_ellipse: float = 30,
+    a2: float | None = None,
+    b2: float | None = None,
     aperture_shape: ApertureShape = ApertureShape.ELLIPTICAL,
 ):
     print(f"make_basic_pipe_object {length=}", aperture_shape)

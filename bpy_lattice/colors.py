@@ -1,6 +1,6 @@
-from .named_colors import ColorName, COLORNAME_VALUES
-
 from typing import Dict, List
+
+from .named_colors import COLORNAME_VALUES, ColorName
 
 
 def resolve_color(color):

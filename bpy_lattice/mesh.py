@@ -1,9 +1,8 @@
-import bpy
-import bmesh
-
 from typing import List, Tuple
-import numpy as np
 
+import bmesh
+import bpy
+import numpy as np
 from mathutils import Matrix, Vector  # must be import after bpy for some reason!
 
 

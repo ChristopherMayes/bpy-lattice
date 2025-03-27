@@ -1,19 +1,20 @@
-import bpy
-import bmesh
 import os
 import re
+from math import cos, pi, sin
+
+import bmesh
+import bpy
 from mathutils import Matrix, Vector
-from math import sin, cos, pi
-from typing import Tuple, Optional, List
 
 from bpy_lattice import materials
+
 from .constants import ELE_COLOR, ELE_X_SCALE, ELE_X_SCALE_FACTOR
 from .elements import (
-    map_table_element,
+    AnyElement,
     Element,
-    SBend,
     Pipe,
-)  # Needed for old code referencing lattice.import_lattice
+    Bend,
+)
 
 
 def ele_material(ele: Element):
@@ -25,11 +26,10 @@ def ele_material(ele: Element):
 
 
 def blendfile(ele: Element):
-    match = re.search("3DMODEL=(.+?).blend", ele.descrip)
+    match = re.search("3DMODEL=(.+?).blend", ele.description)
     if match:
         return match.group(1) + ".blend"
-    else:
-        return None
+    return None
 
 
 def ele_x_scale(ele: Element):
@@ -102,7 +102,7 @@ def multipole_section(X, aperture, n):
     return [(X, aperture * cos(a), aperture * sin(a)) for a in angles]
 
 
-def ele_section(s_rel, ele: Element):
+def ele_section(s_rel, ele: AnyElement):
     """
     Make sections relative to center of element
     """
@@ -111,7 +111,7 @@ def ele_section(s_rel, ele: Element):
         return multipole_section(s_rel, sc, 4)
     if ele.key == "SEXTUPOLE":
         return multipole_section(s_rel, sc, 6)
-    elif isinstance(ele, SBend):
+    if isinstance(ele, Bend):
         a = ele.angle
         if abs(a) < 1e-5 or abs(ele.L) < 1e-5:
             return box_section(s_rel, sc, sc)
@@ -133,21 +133,19 @@ def ele_section(s_rel, ele: Element):
             sec.append(v[:])
         return sec
 
-    elif ele.key == "WIGGLER":
+    if ele.key == "WIGGLER":
         return box_section(s_rel, sc, 2 * sc)
-    elif isinstance(ele, Pipe):
+    if isinstance(ele, Pipe):
         rx = ele.radius_x
         ry = ele.radius_y
         t = ele.thickness
         if rx == 0 or ry == 0:
             return ellipse_section(s_rel, sc, sc)
-        else:
-            return ellipse_section(s_rel, rx + t, ry + t)
-    else:
-        return ellipse_section(s_rel, sc, sc)
+        return ellipse_section(s_rel, rx + t, ry + t)
+    return ellipse_section(s_rel, sc, sc)
 
 
-def ele_mesh(ele: Element):
+def ele_mesh(ele: AnyElement):
     name = ele.name
     print("Mesh: ", name)
     L = ele.L
@@ -247,10 +245,10 @@ def old_fix_mesh(object):
 
 
 def ele_object(
-    ele: Element,
+    ele: AnyElement,
     library: dict = {},
     use_real_model: bool = False,
-    catalogue: Optional[str] = None,
+    catalogue: str | None = None,
     hide_real_model: bool = True,
     keep_simple_model: bool = True,
 ):
@@ -301,12 +299,12 @@ def ele_object(
 
 
 def ele_objects(
-    eles: List[Element],
+    eles: list[AnyElement],
     library: dict = {},
     use_real_model: bool = False,
-    catalogue: Optional[str] = None,
+    catalogue: str | None = None,
     hide_real_model: bool = True,
-    origin: Tuple[float, float, float] = (0, 0, 0),
+    origin: tuple[float, float, float] = (0, 0, 0),
     keep_simple_model: bool = True,
 ):
     """
@@ -347,8 +345,8 @@ def lat_borders(lat, dim="x"):
     return min(xlist), max(xlist)
 
 
-def import_lattice(file):
-    with open(file, "r") as f:
-        next(f)  # Skip the header line
-        lat = [map_table_element(line) for line in f]
-    return lat
+def import_lattice(file: str):
+    # Back-compat: is this necessary?
+    from .elements import load_elements_from_csv
+
+    return load_elements_from_csv(file)

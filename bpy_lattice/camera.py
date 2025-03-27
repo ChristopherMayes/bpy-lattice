@@ -1,5 +1,7 @@
-import bpy
 from math import pi, sqrt
+
+import bpy
+
 from bpy_lattice import materials
 
 

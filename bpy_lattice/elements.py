@@ -1,32 +1,54 @@
 import csv
 import json
-from dataclasses import dataclass, asdict, fields, is_dataclass, MISSING
-from typing import List, Dict, Any, Type
 from abc import ABC
-from .types import ApertureShape
-
-from dataclasses import field
+from dataclasses import asdict, dataclass, field, fields, is_dataclass
 from enum import StrEnum
-
-from bpy_lattice.objects import (
-    make_basic_box_object,
-    make_basic_dipole_object,
-    make_basic_pipe_object,
-    make_basic_empty_object,
-)
-
-from bpy_lattice.materials import assign_color_material
 
 # Principles:
 # simple data structures only (no nested objects)
 # enums when possible
 # serialize/deserialize to dict and include the class name
+from typing import Any, TypeVar
+
+from .materials import assign_color_material
+from .objects import (
+    make_basic_box_object,
+    make_basic_dipole_object,
+    make_basic_empty_object,
+    make_basic_pipe_object,
+)
+from .types import ApertureShape
+
+T = TypeVar("T", bound="BaseElement")
 
 
 @dataclass
 class BaseElement(ABC):
     """
     Abstract base class for all element types.
+
+    Attributes
+    ----------
+    name : str
+        The name of the element.
+    x : float
+        X-coordinate position.
+    y : float
+        Y-coordinate position.
+    z : float
+        Z-coordinate position.
+    theta : float
+        Rotation angle around x-axis in radians.
+    phi : float
+        Rotation angle around y-axis in radians.
+    psi : float
+        Rotation angle around z-axis in radians.
+    cad_model : str
+        Path or reference to CAD model file.
+    description : str
+        Text description of the element.
+    parent : str
+        Name of the parent element.
     """
 
     name: str = ""
@@ -40,44 +62,60 @@ class BaseElement(ABC):
     description: str = ""
     parent: str = ""
 
-    def to_dict(self) -> Dict[str, Any]:
+    def __post_init__(self):
+        for attr, value in _cast_values(asdict(self), type(self)).items():
+            setattr(self, attr, value)
+
+    def to_dict(self) -> dict[str, Any]:
         """Converts the dataclass to a dictionary, adding `class` for reconstruction."""
         d = asdict(self)
         d["class"] = self.__class__.__name__  # Store class type
         return d
 
+    def to_flat_dict(self) -> dict[str, Any]:
+        """Converts the dataclass to a dictionary, adding `class` for reconstruction."""
+        return _flatten_dict(self.to_dict())
+
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "BaseElement":
+    def from_dict(cls: type[T], data: dict[str, Any]) -> T:
         """Reconstructs an object from a dictionary."""
+        init_args = data.copy()
+        clsname = init_args.pop("class", None)
+
+        if clsname:
+            cls = CLASS_MAP[clsname]
+
         if cls is BaseElement:
             raise TypeError("Cannot instantiate BaseElement directly. Use a subclass.")
 
-        data_copy = data.copy()
-        data_copy.pop("class", None)
-
-        # Reconstruct nested dataclass fields
-        init_args = {}
-        for f in fields(cls):
-            value = data_copy.get(f.name, MISSING)
-            if value is not MISSING:
-                if is_dataclass(f.type) and isinstance(value, dict):
-                    init_args[f.name] = f.type(**value)
-                else:
-                    init_args[f.name] = value
-
         return cls(**init_args)
+
+    @classmethod
+    def from_flat_dict(cls: type[T], data: dict[str, Any]) -> T:
+        clsname = data.get("class", cls.__name__)
+
+        cls = CLASS_MAP[clsname]
+
+        field_names = {f.name for f in fields(cls)}
+        dct = {
+            key: value
+            for key, value in _unflatten_dict(data).items()
+            if key in field_names
+        }
+
+        return cls.from_dict(dct)
 
     def to_json(self) -> str:
         """Serializes the object to a JSON string."""
         return json.dumps(self.to_dict())
 
     @classmethod
-    def from_json(cls, json_str: str) -> "BaseElement":
+    def from_json(cls: type[T], json_str: str) -> T:
         """Deserializes an object from a JSON string."""
         return cls.from_dict(json.loads(json_str))
 
     @classmethod
-    def available_classes(cls) -> Dict[str, Type["BaseElement"]]:
+    def available_classes(cls) -> dict[str, type["AnyElement"]]:
         """Returns a dictionary of all registered element types."""
         return CLASS_MAP
 
@@ -108,10 +146,10 @@ class BeamElement(BaseElement, ABC):
     Abstract Beam element with outer physical dimensions and an aperture
     """
 
+    aperture: Aperture = field(default_factory=Aperture)
     length: float = 1
     width: float = 0.2
     height: float = 0.2
-    aperture: Aperture = field(default_factory=Aperture)
     color = "grey"
 
     def to_object(self):
@@ -129,7 +167,6 @@ class BeamElement(BaseElement, ABC):
         length = max(self.length, 1e-6)
         width = max(self.width, 1e-6)
         height = max(self.height, 1e-6)
-        print("here!", self.name, length, width, height)
         obj = make_basic_box_object(
             name=self.name, length=length, width=width, height=height
         )
@@ -150,7 +187,6 @@ class BeamElement(BaseElement, ABC):
 
     def aperture_object(self, suffix="_aperture"):
         aperture = self.aperture
-        print(aperture)
         if aperture.x1_limit + aperture.x2_limit == 0:
             return None
         if aperture.y1_limit + aperture.y2_limit == 0:
@@ -236,7 +272,6 @@ class Bend(BeamElement):
         length = max(self.length, 1e-6)
         width = max(self.width, 1e-6)
         height = max(self.height, 1e-6)
-        print("here!", self.name, length, width, height, self.gap)
         obj = make_basic_dipole_object(
             name=self.name,
             length=length,
@@ -574,7 +609,48 @@ class Undulator(BeamElement):
 #    length: float = 0.0
 
 
-def get_all_subclasses(cls):
+AnyElement = (
+    BeamElement
+    | ACKicker
+    | BeamBeam
+    | BeginningEle
+    | Bend
+    | Collimator
+    | Converter
+    | CrabCavity
+    | Crystal
+    | Drift
+    | EGun
+    | Fiducial
+    | FloorShift
+    | Foil
+    | Fork
+    | Girder
+    | Instrument
+    | Kicker
+    | LCavity
+    | Marker
+    # | Mask
+    | Match
+    | Mirror
+    | Multipole
+    | MultiLayerMirror
+    # | NullEle
+    | Octupole
+    | Patch
+    | Pipe
+    | Quadrupole
+    | RFCavity
+    | Sextupole
+    | Solenoid
+    | Taylor
+    | Undulator
+    # | UnionEle
+    # | Wiggler
+)
+
+
+def get_all_subclasses(cls) -> set[type[AnyElement]]:
     """Recursively finds all subclasses of a given class."""
     subclasses = set(cls.__subclasses__())
     for subclass in cls.__subclasses__():
@@ -582,12 +658,12 @@ def get_all_subclasses(cls):
     return subclasses
 
 
-CLASS_MAP: Dict[str, Type[BaseElement]] = {
+CLASS_MAP: dict[str, type[AnyElement]] = {
     cls.__name__: cls for cls in get_all_subclasses(BaseElement)
 }
 
 
-def get_element_class(class_name: str) -> Type[BaseElement]:
+def get_element_class(class_name: str) -> type[AnyElement]:
     """Safely retrieves a BaseElement subclass by name."""
     cls = CLASS_MAP.get(class_name)
     if cls is None:
@@ -597,7 +673,7 @@ def get_element_class(class_name: str) -> Type[BaseElement]:
     return cls
 
 
-def cast_values(data: Dict[str, Any], cls: Type[Element]) -> Dict[str, Any]:
+def _cast_values(data: dict[str, Any], cls: type[AnyElement]) -> dict[str, Any]:
     """Casts dictionary values to the correct types based on the dataclass fields."""
     casted_data = {}
     field_types = {f.name: f.type for f in fields(cls)}
@@ -608,82 +684,98 @@ def cast_values(data: Dict[str, Any], cls: Type[Element]) -> Dict[str, Any]:
 
         target_type = field_types[key]
 
-        # Convert Enums
         if issubclass(target_type, StrEnum):
             casted_data[key] = target_type(value) if value else target_type()
 
-        # Convert numeric types
         elif target_type in (int, float):
+            # Convert numeric types
             try:
                 casted_data[key] = target_type(value) if value else target_type()
             except ValueError:
                 casted_data[key] = target_type()  # Use default if conversion fails
 
-        # Default case (str, bool, etc.)
+        elif is_dataclass(target_type):
+            if isinstance(value, dict):
+                casted_data[key] = target_type(**value)
+            else:
+                raise ValueError(
+                    f"Expected 'dict' for dataclass of type `{target_type.__name__}` got {type(value).__name__}"
+                )
         else:
+            # Default case (str, bool, etc.)
             casted_data[key] = value
 
     return casted_data
 
 
-def save_elements_to_csv(elements: List[Element], filename: str):
+def save_elements_to_csv(elements: list[AnyElement], filename: str):
     """Saves a list of Element objects to a CSV file, dynamically handling missing fields."""
     if not elements:
         raise ValueError("Element list is empty. Cannot save to CSV.")
 
     # Collect all possible field names across all elements
     fieldnames = set()
-    for elem in elements:
-        fieldnames.update(elem.to_dict().keys())
+
+    data = [elem.to_flat_dict() for elem in elements]
+    for row in data:
+        fieldnames.update(set(row))
+
     fieldnames = sorted(fieldnames)  # Sort to maintain consistency
 
-    with open(filename, mode="w", newline="") as file:
-        writer = csv.DictWriter(file, fieldnames=fieldnames, extrasaction="ignore")
+    with open(filename, mode="w", newline="", encoding="utf-8") as file:
+        writer = csv.DictWriter(file, fieldnames=fieldnames)
         writer.writeheader()
-        for elem in elements:
-            row = elem.to_dict()
-            # Ensure only known fields are written (avoid missing key errors)
-            writer.writerow({field: row.get(field, "") for field in fieldnames})
+        for row in data:
+            writer.writerow(row)
 
 
-def load_elements_from_csv(filename: str) -> List[Element]:
+def load_elements_from_csv(filename: str) -> list[AnyElement]:
     """Loads a list of Element objects from a CSV file, ensuring type conversion."""
     elements = []
-    with open(filename, mode="w", newline="", encoding="utf-8") as file:
+    with open(filename, mode="r", newline="", encoding="utf-8") as file:
         reader = csv.DictReader(file)
 
         for row in reader:
-            print(row)
-            class_name = row.get("class")  # Ensure "class" is read before modification
-            if not class_name:
-                raise ValueError(f"Missing 'class' field in CSV row: {row}")
+            elements.append(BaseElement.from_flat_dict(row))
 
-            if class_name not in CLASS_MAP:
-                raise ValueError(
-                    f"Unknown class type: {class_name}. Available: {list(CLASS_MAP.keys())}"
-                )
-
-            cls = CLASS_MAP[class_name]  # Get the correct class
-
-            row_copy = row.copy()  # Preserve "class" before casting
-            row_copy.pop("class", None)  # Remove before passing to `from_dict()`
-
-            # Cast values to correct types
-            casted_row = cast_values(row_copy, cls)
-
-            # Call from_dict() on the correct class
-            elements.append(cls.from_dict(casted_row))
     return elements
 
 
-def save_elements_to_json(elements: List[BaseElement], filename: str):
+def save_elements_to_json(elements: list[BaseElement], filename: str):
     """Saves a list of Element objects to a JSON file."""
     with open(filename, "w") as file:
         json.dump([elem.to_dict() for elem in elements], file, indent=4)
 
 
-def load_elements_from_json(filename: str) -> List[BaseElement]:
+def load_elements_from_json(filename: str) -> list[BaseElement]:
     """Loads a list of Element objects from a JSON file."""
-    with open(filename, "r") as file:
+    with open(filename) as file:
         data = json.load(file)
-    return [CLASS_MAP[item["class"]].from_dict(item) for item in data]
+    return [BaseElement.from_dict(item) for item in data]
+
+
+def _flatten_dict(dct: dict) -> dict:
+    res = {}
+    for key, value in dct.items():
+        if isinstance(value, dict):
+            for inner_key, inner_value in _flatten_dict(value).items():
+                res[f"{key}.{inner_key}"] = inner_value
+        else:
+            res[key] = value
+    return res
+
+
+def _unflatten_dict(dct: dict) -> dict:
+    res = {}
+    for key, value in dct.items():
+        if "." in key:
+            parts = key.split(".")
+            current = res
+            for part in parts[:-1]:
+                if part not in current:
+                    current[part] = {}
+                current = current[part]
+            current[parts[-1]] = value
+        else:
+            res[key] = value
+    return res
