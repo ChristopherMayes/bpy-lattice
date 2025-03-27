@@ -283,6 +283,7 @@ def bpy_element_from_tao_data(data):
     if ele_cls is Bend:
         return ele_cls(
             **basic_kw,
+            length=length,
             aperture=aperture,
             curvature=float(data["g"]),
             edge_angle1=float(data["e1"]),
@@ -291,6 +292,7 @@ def bpy_element_from_tao_data(data):
 
     return ele_cls(
         **basic_kw,
+        length=length,
         aperture=aperture,
     )
 
