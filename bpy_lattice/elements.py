@@ -220,11 +220,11 @@ class BeamElement(BaseElement, ABC):
         return obj
 
     def align_object_location_and_rotation(self, obj):
-        # obj.rotation_euler.z = self.theta
-        # obj.rotation_euler.y = -self.phi
-        # obj.rotation_euler.x = self.psi
-        # obj.location = (self.z, self.x, self.y)
+        """
+        Set position and angles
 
+        Note the sign of pitch
+        """
         yaw = self.theta
         pitch = self.phi
         roll = self.psi
