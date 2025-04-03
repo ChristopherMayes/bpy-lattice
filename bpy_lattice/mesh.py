@@ -3,7 +3,6 @@ from typing import List, Tuple
 import bmesh
 import bpy
 import numpy as np
-from mathutils import Matrix, Vector  # must be import after bpy for some reason!
 
 
 def ellipse_points(
@@ -17,9 +16,9 @@ def ellipse_points(
     z: float = 0,
 ) -> List[Tuple[float, float, float]]:
     """
-    Generate a loop of points forming an ellipse in the y-z plane.
+    Generate a loop of points forming an ellipse in the x-y plane.
 
-    The ellipse allows asymmetric semi-axes for positive and negative y and z values.
+    The ellipse allows asymmetric semi-axes for positive and negative x and y values.
 
     Parameters
     ----------
@@ -62,16 +61,16 @@ def ellipse_points(
     theta4 = np.linspace(3 * np.pi / 2, 2 * np.pi, n_per_quad[3], endpoint=True)
 
     # Compute (y, z) for each quadrant
-    y1, z1 = a2 * np.cos(theta1), b2 * np.sin(theta1)
-    y2, z2 = a * np.cos(theta2), b2 * np.sin(theta2)
-    y3, z3 = a * np.cos(theta3), b * np.sin(theta3)
-    y4, z4 = a2 * np.cos(theta4), b * np.sin(theta4)
+    x1, y1 = a2 * np.cos(theta1), b2 * np.sin(theta1)
+    x2, y2 = a * np.cos(theta2), b2 * np.sin(theta2)
+    x3, y3 = a * np.cos(theta3), b * np.sin(theta3)
+    x4, y4 = a2 * np.cos(theta4), b * np.sin(theta4)
 
     # Combine all quadrants ensuring n total points
+    xs = np.concatenate([x1, x2, x3, x4])
     ys = np.concatenate([y1, y2, y3, y4])
-    zs = np.concatenate([z1, z2, z3, z4])
 
-    return [(x, float(y + ys[i]), float(z + zs[i])) for i in range(len(ys))]
+    return [(float(x + xs[i]), float(y + ys[i]), z) for i in range(len(ys))]
 
 
 def rectangle_points(
@@ -120,25 +119,20 @@ def rectangle_points(
 
     # Define the four corners in (y, z) space
     points = [
-        (x, y - a, z - b),  # Bottom-left
-        (x, y - a, z + b2),  # Top-left
-        (x, y + a2, z + b2),  # Top-right
-        (x, y + a2, z - b),  # Bottom-right
+        (x - a, y - b, z),  # Bottom-left
+        (x - a, y + b2, z),  # Top-left
+        (x + a2, y + b2, z),  # Top-right
+        (x + a2, y - b, z),  # Bottom-right
     ]
 
     return points
 
 
-def revolve_section_bpy(
-    section,
-    s_rel: float,
-    g: float = 0,
-    e1: float = 0,
-    e2: float = 0,
-    L: float = 0,
-) -> List[Tuple[float, float, float]]:
+def revolve_section(sec, s_rel, g, e1=0, e2=0, L=0, tilt=0):
     """
     Generate a transformed aperture
+
+    TODO: finish this docstring
 
     Parameters
     ----------
@@ -151,39 +145,6 @@ def revolve_section_bpy(
     -------
     List[Tuple[float, float, float]]
         List of (x, y, z) points defining the transformed pipe section.
-    """
-
-    # Edge angle (used in bends)
-    if L != 0:
-        f = s_rel / L + 0.5
-        edge = e2 * f + (-1) * e1 * (1 - f)
-    else:
-        edge = 0
-
-    if g != 0:
-        rho = 1 / g
-        m0 = Matrix.Rotation(edge, 4, "Z")
-        m1 = Matrix.Translation((0, rho, 0))
-        m2 = Matrix.Rotation(-g * s_rel, 4, "Z")
-        m3 = Matrix.Translation((0, -rho, 0))
-        m = m3 @ m2 @ m1 @ m0
-    else:
-        m0 = Matrix.Rotation(edge, 4, "Z")
-        m1 = Matrix.Translation((s_rel, 0, 0))
-        m = m1 @ m0
-
-    sec = []
-    for p in section:
-        v = m @ Vector(p)
-        sec.append(v[:])
-    return sec
-
-
-def revolve_section(sec, s_rel, g, e1=0, e2=0, L=0):
-    """
-    Similar to revolve_section_bpy, but uses numpy.
-
-    Oddly, revolve_section_bpy is still faster.
     """
     # Edge angle (used in bends)
     if L != 0:
@@ -198,22 +159,25 @@ def revolve_section(sec, s_rel, g, e1=0, e2=0, L=0):
     z1 = R[:, 2]
 
     # Edge angle
-    x1e = x1 * np.cos(edge) - y1 * np.sin(edge)
-    y1e = x1 * np.sin(edge) + y1 * np.cos(edge)
+    z1e = z1 * np.cos(edge) - x1 * np.sin(edge)
+    x1e = z1 * np.sin(edge) + x1 * np.cos(edge)
 
     if g == 0:
-        x2 = x1 + s_rel
-        y2 = y1
+        z2 = z1 + s_rel
+        x2 = x1
 
     else:
         theta = s_rel * g
         rho = 1 / g
 
-        x2 = (rho + y1e) * np.sin(theta) + x1e * np.cos(theta)
-        y2 = (rho + y1e) * np.cos(theta) - x1e * np.sin(theta) - rho
+        z2 = (rho + x1e) * np.sin(theta) + z1e * np.cos(theta)
+        x2 = (rho + x1e) * np.cos(theta) - z1e * np.sin(theta) - rho
+
+    x3 = x2 * np.cos(tilt) - y1 * np.sin(tilt)
+    y2 = x2 * np.sin(tilt) + y1 * np.cos(tilt)
 
     return [
-        tuple(row) for row in np.column_stack((x2, y2, z1))
+        tuple(row) for row in np.column_stack((x3, y2, z2))
     ]  # Return list of tuples
     # return np.column_stack((x2, y2, z1)).tolist() # Return list of lists
 

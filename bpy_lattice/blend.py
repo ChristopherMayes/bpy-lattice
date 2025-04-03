@@ -5,7 +5,7 @@ import pathlib
 import bpy
 
 from .elements import AnyElement
-from .objects import add_children_from_blend
+from .objects import add_children_from_blend, remap_axes
 
 
 def remove_unused_data():
@@ -73,6 +73,8 @@ def add_elements_to_blender(
                     library_cache,
                     collection=library_collection,
                 )
+            else:
+                print(f"--- MISSING Blend file: {bfile}")
 
         objs.append(obj)
 
@@ -81,4 +83,10 @@ def add_elements_to_blender(
             collection.objects.link(child)
 
     bpy.context.view_layer.update()
+
     return library_cache, objs
+
+
+def remamp_axes():
+    parentless_objects = [obj for obj in bpy.data.objects if obj.parent is None]
+    remap_axes(parentless_objects, x_axis="Z", y_axis="X", z_axis="Y")

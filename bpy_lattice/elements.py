@@ -197,6 +197,13 @@ class BeamElement(BaseElement, ABC):
         else:
             curvature = 0
 
+        if hasattr(self, "tilt"):
+            tilt = self.tilt
+        else:
+            tilt = 0
+
+        thickness = aperture.thickness or 0.001
+
         obj = make_basic_pipe_object(
             name=f"{self.name}{suffix}",
             length=self.length,
@@ -205,17 +212,26 @@ class BeamElement(BaseElement, ABC):
             a2=aperture.x2_limit,
             b2=aperture.y2_limit,
             curvature=curvature,
-            thickness=aperture.thickness,
+            thickness=thickness,
             aperture_shape=aperture.shape,
+            tilt=tilt,
         )
 
         return obj
 
     def align_object_location_and_rotation(self, obj):
-        obj.rotation_euler.z = self.theta
-        obj.rotation_euler.y = -self.phi
-        obj.rotation_euler.x = self.psi
-        obj.location = (self.z, self.x, self.y)
+        # obj.rotation_euler.z = self.theta
+        # obj.rotation_euler.y = -self.phi
+        # obj.rotation_euler.x = self.psi
+        # obj.location = (self.z, self.x, self.y)
+
+        yaw = self.theta
+        pitch = self.phi
+        roll = self.psi
+        # No axes swapping
+        obj.rotation_mode = "ZXY"
+        obj.rotation_euler = (-pitch, yaw, roll)
+        obj.location = (self.x, self.y, self.z)
 
 
 # PALS standard elements
@@ -260,6 +276,7 @@ class Bend(BeamElement):
 
     gap: float = 0.04
     curvature: float = 0.0
+    tilt: float = 0.0
     edge_angle1: float = 0.0
     edge_angle2: float = 0.0
     b_field: float = 0.0
@@ -280,6 +297,7 @@ class Bend(BeamElement):
             height=height,
             curvature=self.curvature,
             gap=self.gap,
+            tilt=self.tilt,
         )
         # Set color
         for child in obj.children:

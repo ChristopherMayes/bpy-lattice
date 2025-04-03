@@ -288,6 +288,7 @@ def bpy_element_from_tao_data(data):
             curvature=float(data["g"]),
             edge_angle1=float(data["e1"]),
             edge_angle2=float(data["e2"]),
+            tilt=float(data["ref_tilt"]),
         )
 
     return ele_cls(
