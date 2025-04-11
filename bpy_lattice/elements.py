@@ -485,7 +485,32 @@ class Mirror(BeamElement):
     X-ray mirror.
     """
 
-    pass
+    color = "silver"
+
+    def to_basic_object(self):
+        """
+        Special mirror geomer
+        TODO: better parameters
+        """
+        length = max(self.length, 0.2)
+        # NOTE: remapped definitions
+        width = max(self.height, 0.01)
+        height = max(self.width, 0.1)
+        obj = make_basic_box_object(
+            name=self.name,
+            length=length,
+            width=width,
+            height=height,
+            x=width / 2,
+        )
+
+        # Add color material
+        assign_color_material(obj, self.color)
+
+        # Set location and angles
+        self.align_object_location_and_rotation(obj)
+
+        return obj
 
 
 @dataclass
