@@ -115,9 +115,11 @@ def test_align_object_location_and_rotation(cls: type[BeamElement]) -> None:
 
     instance = cls()
     instance.align_object_location_and_rotation(obj)
-    assert obj.rotation_euler.z == instance.theta
-    assert obj.rotation_euler.y == -instance.phi
-    assert obj.rotation_euler.x == instance.psi
+    print("here", obj.rotation_euler)
+    assert obj.rotation_euler == (instance.psi, -instance.phi, instance.theta)
+    # assert obj.rotation_euler.z == instance.theta
+    # assert obj.rotation_euler.y == -instance.phi
+    # assert obj.rotation_euler.x == instance.psi
     assert obj.location == (instance.z, instance.x, instance.y)
 
 
