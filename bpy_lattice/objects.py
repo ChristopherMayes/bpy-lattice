@@ -33,7 +33,6 @@ def make_basic_pipe_object(
     aperture_shape: ApertureShape = ApertureShape.ELLIPTICAL,
     tilt: float = 0.0,
 ):
-    print(f"make_basic_pipe_object {length=}", aperture_shape)
     # Baseline section
     aperture_shape = ApertureShape(aperture_shape)
 
@@ -76,7 +75,6 @@ def make_basic_box_object(
     n=None,
     tilt=0,
 ):
-    print("make_basic_box_object")
     # Baseline section
     section0 = rectangle_points(width / 2, height / 2, x=x, y=y, z=z)
 
