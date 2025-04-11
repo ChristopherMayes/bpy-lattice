@@ -47,7 +47,8 @@ def make_basic_pipe_object(
         raise ValueError(aperture_shape)
 
     if n is None:
-        n = int(abs(curvature * length) * 180 / np.pi / 5)  # every 5 deg
+        delta_deg = 1
+        n = int(abs(curvature * length) * 180 / np.pi / delta_deg)  # every delta_deg
     n = max(n, 2)
     srels = np.linspace(-length / 2, length / 2, n)
 
