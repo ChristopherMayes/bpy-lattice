@@ -2,6 +2,8 @@ import argparse
 import logging
 from enum import StrEnum
 
+import numpy as np
+
 # from pytao import Tao
 from ..elements import (
     Aperture,
@@ -10,6 +12,8 @@ from ..elements import (
     save_elements_to_json,
 )
 from ..types import ApertureShape
+
+from ..tracks import Track
 
 #
 #
@@ -128,6 +132,46 @@ def element_class_from_key(key: EleKey):
     return get_element_class(EleKey_TO_CLASSNAME[key])
 
 
+def get_rvec_wmat(tao, ele_id):
+    floor = tao.ele_floor(ele_id)
+    rvec = floor["Reference"][0:3]
+    wmat = floor["Reference-W"].reshape(3, 3)
+    return rvec, wmat
+
+
+def get_global_orbit(tao, ele_id):
+    """
+    returns position and momentum vectors in global coordinates
+
+
+    Returns
+    -------
+    position: ndarray
+        array with [x, y, z] in m
+    momentum: ndarray
+        momentum with [px, py, pz] in eV/c
+    """
+
+    orbit = tao.ele_orbit(ele_id)
+    rvec, wmat = get_rvec_wmat(tao, ele_id)
+
+    x, y = orbit["x"], orbit["y"]
+    p0c = orbit["p0c"]
+    px, py, delta = orbit["px"], orbit["py"], orbit["pz"]  # Bmad coordinates
+    # Momenta in eV/c
+    pz = np.sqrt((1 + delta) ** 2 - px**2 - py**2) * p0c
+    px = px * p0c
+    py = py * p0c
+
+    xvec = np.array([x, y, 0])  # z=0 by definition
+    pvec = np.array([px, py, pz])
+
+    position = wmat @ xvec + rvec
+    momentum = wmat @ pvec
+
+    return position, momentum
+
+
 def get_ele_data(tao, ele_id):
     """
     Get normalized element data dict from Tao
@@ -138,6 +182,7 @@ def get_ele_data(tao, ele_id):
 
     # Convert to lower case
     info = {k.lower(): v for k, v in info.items()}
+    ix_ele = info["ix_ele"]
     # use EleKey
     key = EleKey(info["key"].lower())
     info["key"] = key
@@ -147,8 +192,8 @@ def get_ele_data(tao, ele_id):
         # Average the floor position vectors
         # Use Reference because of a bug:
         # https://github.com/bmad-sim/bmad-ecosystem/issues/1266
-        r = tao.ele_floor(ele_id, where="end")["Reference"]
-        r0 = tao.ele_floor(ele_id - 1, where="end")["Reference"]  # Previous element
+        r = tao.ele_floor(ix_ele, where="end")["Reference"]
+        r0 = tao.ele_floor(ix_ele - 1, where="end")["Reference"]  # Previous element
         r = (r + r0) / 2
     else:
         floor = tao.ele_floor(ele_id, where="center")
@@ -300,14 +345,14 @@ def bpy_element_from_tao_data(data):
 
 def bpy_elements_from_tao(
     tao,
-    ele_list=None,
+    ele_ids=None,
     add_bend_pipes=True,
 ):
-    if ele_list is None:
-        ele_list = tao.lat_list("*", "ele.ix_ele", flags="-no_slaves")
+    if ele_ids is None:
+        ele_ids = tao.lat_list("*", "ele.ix_ele", flags="-no_slaves")
 
     eles = []
-    for ele_id in ele_list:
+    for ele_id in ele_ids:
         # print(ele_id)
         ele = bpy_element_from_tao(tao, ele_id)
 
@@ -319,7 +364,7 @@ def bpy_elements_from_tao(
     return eles
 
 
-def write_bpy_lattice_json(tao, outfile, ele_list=None):
+def write_bpy_lattice_json(tao, outfile, ele_ids=None):
     """
     This writes the `.layout_table` style file that the
     bmad_to_blender Fortran program creates for bpy_lattice
@@ -337,15 +382,41 @@ def write_bpy_lattice_json(tao, outfile, ele_list=None):
     outfile: str
         File to write to
 
-    ele_list: list of str or int, optional
+    ele_ids: list of str or int, optional
         List of elements to extract
         Default: None => will match all unique elements of the lattice (i.e., without slaves)
 
 
     """
-    eles = bpy_elements_from_tao(tao, ele_list=ele_list)
+    eles = bpy_elements_from_tao(tao, ele_ids=ele_ids)
 
     save_elements_to_json(eles, outfile)
+
+
+def floor_orbit_track_from_tao(
+    tao,
+    match="*",
+    remove_duplicates=True,
+    name="orbit",
+    weight=0.01,
+    color="blue",
+):
+    """
+    Return a Track of the orbit in global coordinates
+    """
+
+    xs = tao.lat_list(match, "orbit.floor.x")
+    ys = tao.lat_list(match, "orbit.floor.y")
+    zs = tao.lat_list(match, "orbit.floor.z")
+
+    # Filter
+    if remove_duplicates:
+        ss = tao.lat_list(match, "ele.s")
+        uix = np.unique(ss, return_index=True)[1]
+        xs = xs[uix]
+        ys = ys[uix]
+        zs = zs[uix]
+    return Track(x=xs, y=ys, z=zs, name=name, weight=weight, color=color)
 
 
 def bmad_to_blender_entrypoint():
@@ -403,5 +474,5 @@ def bmad_to_blender_entrypoint():
 
     # Call the function to write the CSV
     logger.info("Writing lattice JSON to: %s", outfile)
-    write_bpy_lattice_json(tao, outfile, ele_list=args.elements)
+    write_bpy_lattice_json(tao, outfile, ele_ids=args.elements)
     logger.info("Lattice JSON generation completed successfully.")
