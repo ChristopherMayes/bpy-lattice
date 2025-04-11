@@ -308,6 +308,7 @@ class Bend(BeamElement):
         if aperture_obj is not None:
             print("adding aperture to bend")
             aperture_obj.parent = obj
+            assign_color_material(child, "darkgrey")
 
         # Set location and angles
         self.align_object_location_and_rotation(obj)
@@ -359,7 +360,7 @@ class Drift(BeamElement):
     """
 
     curvature: float = 0.0
-    color = "black"
+    color = "grey"
 
 
 @dataclass
@@ -399,6 +400,7 @@ class Foil(BeamElement):
     Strips electrons from an atom.
     """
 
+    color = "silver"
     pass
 
 
@@ -426,7 +428,7 @@ class Instrument(BeamElement):
     Measurement element.
     """
 
-    color = "darkgrey"
+    color = "brown"
 
 
 @dataclass
@@ -492,6 +494,7 @@ class Multipole(BeamElement):
     Multipole
     """
 
+    color = "pink"
     pass
 
 
@@ -537,7 +540,7 @@ class Pipe(BeamElement):
     Reference orbit shift.
     """
 
-    color = "grey"
+    color = "darkgrey"
 
     def to_object(self):
         # A pipe is the aperture
@@ -599,6 +602,7 @@ class Taylor(BeamElement):
     General Taylor map element.
     """
 
+    color = "olive"
     pass
 
 
