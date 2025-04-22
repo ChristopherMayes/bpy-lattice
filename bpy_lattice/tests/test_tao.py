@@ -7,7 +7,7 @@ import pytest
 from .conftest import LATTICES_ROOT, TEST_ARTIFACTS
 from ..interfaces.bmad import bpy_elements_from_tao
 from ..blend import add_elements_to_blender
-
+from ..lattice import Lattice
 
 lattices = pytest.mark.parametrize(
     ("lattice,"),
@@ -24,6 +24,22 @@ def test_bpy_elements_from_tao(lattice: pathlib.Path) -> None:
     with pytao.SubprocessTao(lattice_file=lattice, noplot=True) as tao:
         for ele in bpy_elements_from_tao(tao):
             print(ele)
+
+
+@lattices
+def test_lattice_from_tao(lattice: pathlib.Path) -> None:
+    with pytao.SubprocessTao(lattice_file=lattice, noplot=True) as tao:
+        lat = Lattice.from_tao(tao)
+
+    lat.to_json("lat.json")
+    lat2 = Lattice.from_json("lat.json")
+
+    # Check elements
+    for ele1, ele2 in zip(lat.elements, lat2.elements):
+        assert ele1 == ele2
+
+    lat.add_elements_to_blender()
+    lat.add_tracks_to_blender()
 
 
 @lattices
