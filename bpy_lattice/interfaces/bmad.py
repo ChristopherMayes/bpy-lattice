@@ -1,8 +1,9 @@
 import argparse
 import logging
 from enum import StrEnum
-
+from typing import Literal
 import numpy as np
+from ..envelopes import Envelope, EnvelopeLoop
 
 # from pytao import Tao
 from ..elements import (
@@ -135,7 +136,7 @@ def element_class_from_key(key: EleKey):
 def get_rvec_wmat(tao, ele_id):
     floor = tao.ele_floor(ele_id)
     rvec = floor["Reference"][0:3]
-    wmat = floor["Reference-W"].reshape(3, 3)
+    wmat = floor["Reference-W"].reshape(3, 3, order="F")
     return rvec, wmat
 
 
@@ -476,3 +477,174 @@ def bmad_to_blender_entrypoint():
     logger.info("Writing lattice JSON to: %s", outfile)
     write_bpy_lattice_json(tao, outfile, ele_ids=args.elements)
     logger.info("Lattice JSON generation completed successfully.")
+
+
+# Envelope and Bmad dump file
+
+
+def wedge_star_envelope(
+    points: np.ndarray,
+    n_bins: int = 360,
+    margin: float = 0.0,
+    fallback_fraction: float = 0.05,
+    closed: bool = False,
+    normalize: Literal[False, "std", "cov"] = "cov",
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Create a star-shaped envelope by binning points into angular wedges.
+    Supports optional normalization using standard deviation or covariance.
+
+    Parameters
+    ----------
+    points : np.ndarray
+        (N, 2) array of 2D points.
+    n_bins : int
+        Number of angular wedges.
+    margin : float
+        Fractional margin to expand envelope radius slightly.
+    fallback_fraction : float
+        Radius fraction to use in empty wedges.
+    closed : bool
+        If True, first point is repeated at the end.
+    normalize : {'std', 'cov', False}
+        Method for normalizing point distribution before computing angles.
+
+    Returns
+    -------
+    envelope : np.ndarray
+        (n_bins [+1], 2) array of boundary points.
+    centroid : np.ndarray
+        (2,) centroid of the input points.
+    """
+    centroid = np.mean(points, axis=0)
+    rel = points - centroid
+
+    if normalize == "cov":
+        C = np.cov(rel.T)
+        try:
+            L = np.linalg.cholesky(C)
+            C_inv_sqrt = np.linalg.inv(L).T
+            rel_norm = rel @ C_inv_sqrt
+        except np.linalg.LinAlgError:
+            rel_norm = rel  # fallback: no normalization
+            C_inv_sqrt = None
+    elif normalize == "std":
+        scale = np.std(rel, axis=0)
+        scale[scale == 0] = 1
+        rel_norm = rel / scale
+    else:
+        rel_norm = rel
+
+    angles = np.arctan2(rel_norm[:, 1], rel_norm[:, 0]) % (2 * np.pi)
+    radii = np.linalg.norm(rel_norm, axis=1)
+    r_fallback = np.mean(radii) * fallback_fraction
+
+    bin_edges = np.linspace(0, 2 * np.pi, n_bins + 1)
+    bin_indices = np.digitize(angles, bin_edges) - 1
+
+    angle_mids = (bin_edges[:-1] + bin_edges[1:]) / 2
+    cos_vals = np.cos(angle_mids)
+    sin_vals = np.sin(angle_mids)
+
+    envelope = []
+    for i in range(n_bins):
+        mask = bin_indices == i
+        r_max = np.max(radii[mask]) * (1 + margin) if np.any(mask) else r_fallback
+        vec_norm = np.array([r_max * cos_vals[i], r_max * sin_vals[i]])
+
+        # Un-normalize if needed
+        if normalize == "cov" and "C_inv_sqrt" in locals():
+            vec = vec_norm @ np.linalg.inv(C_inv_sqrt)
+        elif normalize == "std":
+            vec = vec_norm * scale
+        else:
+            vec = vec_norm
+
+        envelope.append(centroid + vec)
+
+    envelope = np.array(envelope)
+    if closed:
+        envelope = np.vstack([envelope, envelope[0]])
+
+    return envelope, centroid
+
+
+def extract_dump_particles(h5, gname, species=None):
+    from pmd_beamphysics import ParticleGroup
+
+    g = h5["data"][gname]["particles"]
+    if species is None:
+        species = get_species(g)
+    g = g[species]
+    return ParticleGroup(g)
+
+
+def get_species(h5):
+    slist = list(h5)
+    if len(slist) != 1:
+        raise NotImplementedError(f"More than one species: {slist=}")
+    return slist[0]
+
+
+# Bmad Dump file utils
+def extract_dump_ix_ele(h5, gname, species=None):
+    g = h5[f"data/{gname}/particles"]
+    if species is None:
+        species = get_species(g)
+    g = g[species]
+    return int(g["elementIndex"].attrs["value"][0])
+
+
+def beam_global_envelopeloop(
+    h5,
+    gname,
+    rvec=None,
+    wmat=None,
+    n_bins=360,
+    scale=1,
+):
+    pg = extract_dump_particles(h5, gname)
+    x = pg.x
+    y = pg.y
+    points = np.array([x, y]).T
+    envelope, _ = wedge_star_envelope(points, n_bins=n_bins)
+
+    # Extend to 3d
+    envelope_3d = np.hstack([envelope * scale, np.zeros((envelope.shape[0], 1))])
+
+    # Global
+    if rvec is not None and wmat is not None:
+        envelope_3d = (wmat @ envelope_3d.T).T + rvec
+
+    return EnvelopeLoop(envelope_3d)
+
+
+def beam_envelope_from_dump_h5(tao, h5, n_bins=36, scale=1):
+    loops = []
+    unique_s = set()
+    for gname in list(h5["data"]):
+        ix_ele = extract_dump_ix_ele(h5, gname)
+        rvec, wmat = get_rvec_wmat(tao, ix_ele)
+        head = tao.ele_head(ix_ele)
+        s = head["s"]
+        if s in unique_s:
+            print("skipping duplicate s:", s)
+            continue
+        else:
+            unique_s.add(s)
+        loop = beam_global_envelopeloop(
+            h5, gname, rvec, wmat, n_bins=n_bins, scale=scale
+        )
+        loops.append(loop)
+
+    envelope = Envelope(loops=loops)
+
+    return envelope
+
+
+def beam_envelope_from_dump(tao, file, n_bins=36, scale=1):
+    import h5py
+
+    with h5py.File(file, "r") as h5:
+        envelope = beam_envelope_from_dump_h5(tao, h5, n_bins=n_bins, scale=scale)
+    return envelope

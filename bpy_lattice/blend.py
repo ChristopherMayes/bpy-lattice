@@ -6,6 +6,7 @@ import bpy
 
 from .elements import AnyElement, Bend, Undulator
 from .tracks import Track
+from .envelopes import Envelope
 from .objects import add_children_from_blend, remap_axes
 
 
@@ -35,22 +36,34 @@ def add_elements_to_blender(
     *,
     remove_unused: bool = True,
     catalogue: pathlib.Path | None = None,
+    elements_collection=None,
+    library_cache=None,
+    library_collection=None,
 ) -> None:
     if remove_unused:
         remove_unused_data()
 
-    elements_collection_name = "Elements"
-    elements_collection = bpy.data.collections.new(elements_collection_name)
-    bpy.context.scene.collection.children.link(elements_collection)
+    # Handle defaults
+    if elements_collection is None:
+        elements_collection_name = "Elements"
+        elements_collection = bpy.data.collections.new(elements_collection_name)
+        bpy.context.scene.collection.children.link(elements_collection)
 
-    library_cache = {}
-    library_collection_name = "Library"
-    library_collection = bpy.data.collections.new(library_collection_name)
-    bpy.context.scene.collection.children.link(library_collection)
+    library_cache = library_cache or {}
 
-    if catalogue is None:
-        catalogue = Path(os.path.expandvars("$BLENDER_CATALOGUE"))
-        assert catalogue.exists()
+    if library_collection is None:
+        library_collection_name = "Library"
+        library_collection = bpy.data.collections.new(library_collection_name)
+        bpy.context.scene.collection.children.link(library_collection)
+
+    if not catalogue:
+        catalogue = os.environ.get("BLENDER_CATALOGUE")
+
+    if catalogue is not None:
+        catalogue = Path(catalogue)
+        if not catalogue.exists():
+            raise ValueError(f"Catalogue does not exist: {catalogue}")
+        print(f"📚 Using Catalogue: {catalogue}")
 
     objs = []
     for ele in eles:
@@ -68,7 +81,7 @@ def add_elements_to_blender(
         if ele.cad_model:
             bfile = Path(ele.cad_model)
 
-            if not bfile.exists():
+            if not bfile.exists() and catalogue.exists():
                 bfile = catalogue / ele.cad_model
 
             if bfile.exists():
@@ -82,6 +95,7 @@ def add_elements_to_blender(
                     library_cache,
                     collection=library_collection,
                 )
+                # Special case for Bends and Undulators
                 if isinstance(ele, (Bend, Undulator)):
                     aperture_obj = ele.aperture_object()
                     if aperture_obj is not None:
@@ -109,12 +123,27 @@ def add_tracks_to_blender(tracks: list[Track], collection=None):
     if collection is None:
         collection = bpy.data.collections.new("Tracks")
         bpy.context.scene.collection.children.link(collection)
+    curves = []
     for track in tracks:
         curve = track.to_curve()
         collection.objects.link(curve)
+        curves.append(curve)
+    return curves
 
 
-def remamp_axes(objects=None):
+def add_envelopes_to_blender(envelopes: list[Envelope], collection=None):
+    if collection is None:
+        collection = bpy.data.collections.new("Envelopes")
+        bpy.context.scene.collection.children.link(collection)
+    objs = []
+    for envelope in envelopes:
+        obj = envelope.to_object()
+        collection.objects.link(obj)
+        objs.append(obj)
+    return objs
+
+
+def remap_zx(objects=None):
     if objects is None:
         objects = bpy.data.objects
     print(f"🟣 remapping {len(objects)} objects Z->X")

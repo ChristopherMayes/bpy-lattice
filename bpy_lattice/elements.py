@@ -306,7 +306,6 @@ class Bend(BeamElement):
         # Look for apertures
         aperture_obj = self.aperture_object()
         if aperture_obj is not None:
-            print("adding aperture to bend")
             aperture_obj.parent = obj
             assign_color_material(child, "darkgrey")
 
