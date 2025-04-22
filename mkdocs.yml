@@ -5,8 +5,8 @@ repo_name: ChristopherMayes/bpy-lattice
 nav:
   - Home: index.md
   - Examples:
-    - examples/test.ipynb
     - examples/bmad_interface_example.ipynb
+    - examples/beam_envelope_example.ipynb
 
 theme:
   icon:
