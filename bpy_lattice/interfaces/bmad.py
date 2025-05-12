@@ -350,7 +350,7 @@ def bpy_element_from_tao_data(data):
     )
 
 
-def ele_ids_from_branch(
+def unique_ele_ids_from_branch(
     tao: Tao,
     ix_uni: str | int,
     ix_branch: str | int,
@@ -384,7 +384,7 @@ def ele_ids_from_branch(
     ]
 
 
-def ele_ids_from_universe(tao: Tao, ix_uni: str | int) -> list[str]:
+def unique_ele_ids_from_universe(tao: Tao, ix_uni: str | int) -> list[str]:
     """
     Retrieve element IDs from all branches in a universe.
 
@@ -402,11 +402,13 @@ def ele_ids_from_universe(tao: Tao, ix_uni: str | int) -> list[str]:
     """
     ele_ids = []
     for ix_branch in tao.inum(f"{ix_uni}^ix_branch"):
-        ele_ids.extend(ele_ids_from_branch(tao, ix_uni=ix_uni, ix_branch=ix_branch))
+        ele_ids.extend(
+            unique_ele_ids_from_branch(tao, ix_uni=ix_uni, ix_branch=ix_branch)
+        )
     return ele_ids
 
 
-def ele_ids_from_superuniverse(tao: Tao) -> list[str]:
+def unique_ele_ids_from_superuniverse(tao: Tao) -> list[str]:
     """
     Retrieve element IDs from all universes in the Tao superuniverse.
 
@@ -422,7 +424,7 @@ def ele_ids_from_superuniverse(tao: Tao) -> list[str]:
     """
     ele_ids = []
     for ix_uni in tao.inum("ix_universe"):
-        ele_ids.extend(ele_ids_from_universe(tao, ix_uni=ix_uni))
+        ele_ids.extend(unique_ele_ids_from_universe(tao, ix_uni=ix_uni))
     return ele_ids
 
 
@@ -514,9 +516,9 @@ def floor_orbit_track_from_tao(
     return Track(x=xs, y=ys, z=zs, name=name, weight=weight, color=color)
 
 
-def ele_ids_by_selector(tao: Tao, selectors: list[str] | None = None):
+def unique_ele_ids_by_selector(tao: Tao, selectors: list[str] | None = None):
     """
-    Retrieve element IDs based on universe/branch-selectors and/or specific IDs.
+    Retrieve unique element IDs based on universe/branch-selectors and/or specific IDs.
 
     Parameters
     ----------
@@ -543,7 +545,7 @@ def ele_ids_by_selector(tao: Tao, selectors: list[str] | None = None):
     """
     if selectors is None or not selectors:
         # Default behavior: retrieve all elements from the entire superuniverse
-        return ele_ids_from_superuniverse(tao)
+        return unique_ele_ids_from_superuniverse(tao)
 
     ele_ids = []
 
@@ -554,10 +556,12 @@ def ele_ids_by_selector(tao: Tao, selectors: list[str] | None = None):
         elif "@" in sel:
             # Universe@Branch selector (e.g., "1@2")
             ix_uni, ix_branch = sel.split("@", 1)
-            ele_ids.extend(ele_ids_from_branch(tao, ix_uni=ix_uni, ix_branch=ix_branch))
+            ele_ids.extend(
+                unique_ele_ids_from_branch(tao, ix_uni=ix_uni, ix_branch=ix_branch)
+            )
         else:
             # Universe selector (e.g., "1")
-            ele_ids.extend(ele_ids_from_universe(tao, ix_uni=sel))
+            ele_ids.extend(unique_ele_ids_from_universe(tao, ix_uni=sel))
 
     def ele_sort(ele: str):
         try:
@@ -637,7 +641,7 @@ def bmad_to_blender_entrypoint():
 
     # Generate JSON using flexible selectors
     logger.info("Writing lattice JSON to: %s", outfile)
-    ele_ids = ele_ids_by_selector(tao, args.elements)
+    ele_ids = unique_ele_ids_by_selector(tao, args.elements)
     write_bpy_lattice_json(tao, outfile, ele_ids=ele_ids)
     logger.info("Lattice JSON generation completed successfully.")
 
