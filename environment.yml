@@ -7,7 +7,7 @@ dependencies:
   - numpy<2 # Needed because of https://projects.blender.org/blender/blender/issues/134550
   # Developer
   - openpmd-beamphysics
-  - pytao
+  - pytao >0.5.2
   - pytest
   - pytest-cov
   - jupyterlab>=3
@@ -19,5 +19,5 @@ dependencies:
   - mkdocstrings-python
   - pip
   - pip:
-    - mkdocstrings-python
-    - bpy
+      - mkdocstrings-python
+      - bpy
