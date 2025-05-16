@@ -509,7 +509,7 @@ def bmad_to_blender_entrypoint():
 
     # Generate JSON using flexible selectors
     logger.info("Writing lattice JSON to: %s", outfile)
-    ele_ids = tao.unique_ele_ids(args.elements)
+    ele_ids = tao.unique_ele_ids(*args.elements or [])
     write_bpy_lattice_json(tao, outfile, ele_ids=ele_ids)
     logger.info("Lattice JSON generation completed successfully.")
 
