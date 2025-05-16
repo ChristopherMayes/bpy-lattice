@@ -61,6 +61,7 @@ class BaseElement(ABC):
     cad_model: str = ""
     description: str = ""
     parent: str = ""
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
         for attr, value in _cast_values(asdict(self), type(self)).items():

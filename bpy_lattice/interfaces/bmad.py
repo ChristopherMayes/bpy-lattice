@@ -232,6 +232,14 @@ def get_ele_data(tao, ele_id):
     #    print(info)
     #    raise NotImplementedError(key)
 
+    ix_universe = info["universe"]
+    ix_branch = info[f"{ix_universe}^ix_branch"]
+    branch1 = tao.branch1(ix_uni=ix_universe, ix_branch=ix_branch)
+    info["metadata"] = {
+        "ix_universe": ix_universe,
+        "ix_branch": ix_branch,
+        "branch": branch1["name"],
+    }
     return info
 
 
@@ -256,6 +264,7 @@ def get_basic_element_kwargs_from_tao_data(data):
         psi=float(data["floor_psi"]),
         description=description,
         cad_model=cad_model,
+        metadata=data.get("metadata", {}),
     )
 
 
