@@ -434,6 +434,8 @@ def bmad_to_blender_entrypoint():
             "pytao is required to use this entrypoint. Install it with `python -m pip install pytao`"
         )
 
+    from ..lattice import Lattice
+
     parser = argparse.ArgumentParser(description="Generate a lattice JSON from Tao.")
 
     parser.add_argument("lattice_file", type=str, help="Lattice file path")
@@ -443,13 +445,13 @@ def bmad_to_blender_entrypoint():
         nargs="?",
         help="Output JSON file path (default: based on lattice file)",
     )
-    parser.add_argument(
-        "--elements",
-        type=int,
-        nargs="+",
-        default=None,
-        help="List of element IDs to extract (default: all elements)",
-    )
+    # parser.add_argument(
+    #    "--elements",
+    #    type=int,
+    #    nargs="+",
+    #    default=None,
+    #    help="List of element IDs to extract (default: all elements)",
+    # )
     parser.add_argument("--verbose", action="store_true", help="Enable verbose logging")
     args = parser.parse_args()
 
@@ -463,9 +465,9 @@ def bmad_to_blender_entrypoint():
     # Determine output file name if not provided
     if args.outfile is None:
         if args.lattice_file.endswith(".bmad"):
-            outfile = args.lattice_file.replace(".bmad", ".layout_table")
+            outfile = args.lattice_file.replace(".bmad", ".json")
         else:
-            outfile = f"{args.lattice_file}.layout_table"
+            outfile = f"{args.lattice_file}.json"
     else:
         outfile = args.outfile
 
@@ -475,7 +477,9 @@ def bmad_to_blender_entrypoint():
 
     # Call the function to write the CSV
     logger.info("Writing lattice JSON to: %s", outfile)
-    write_bpy_lattice_json(tao, outfile, ele_ids=args.elements)
+    # write_bpy_lattice_json(tao, outfile, ele_ids=args.elements)
+    lattice = Lattice.from_tao(tao)
+    lattice.to_json(outfile)
     logger.info("Lattice JSON generation completed successfully.")
 
 
