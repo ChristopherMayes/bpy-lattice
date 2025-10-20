@@ -8,7 +8,7 @@ from enum import StrEnum
 # simple data structures only (no nested objects)
 # enums when possible
 # serialize/deserialize to dict and include the class name
-from typing import Any, TypeVar
+from typing import Any, Type, TypeVar
 
 from .materials import assign_color_material
 from .objects import (
@@ -60,6 +60,7 @@ class BaseElement(ABC):
     psi: float = 0.0
     cad_model: str = ""
     description: str = ""
+    type: str = ""
     parent: str = ""
     metadata: dict[str, Any] = field(default_factory=dict)
 
@@ -78,7 +79,7 @@ class BaseElement(ABC):
         return _flatten_dict(self.to_dict())
 
     @classmethod
-    def from_dict(cls: type[T], data: dict[str, Any]) -> T:
+    def from_dict(cls: Type[T], data: dict[str, Any]) -> T:
         """Reconstructs an object from a dictionary."""
         init_args = data.copy()
         clsname = init_args.pop("class", None)
@@ -92,7 +93,7 @@ class BaseElement(ABC):
         return cls(**init_args)
 
     @classmethod
-    def from_flat_dict(cls: type[T], data: dict[str, Any]) -> T:
+    def from_flat_dict(cls: Type[T], data: dict[str, Any]) -> T:
         clsname = data.get("class", cls.__name__)
 
         cls = CLASS_MAP[clsname]
@@ -111,12 +112,12 @@ class BaseElement(ABC):
         return json.dumps(self.to_dict())
 
     @classmethod
-    def from_json(cls: type[T], json_str: str) -> T:
+    def from_json(cls: Type[T], json_str: str) -> T:
         """Deserializes an object from a JSON string."""
         return cls.from_dict(json.loads(json_str))
 
     @classmethod
-    def available_classes(cls) -> dict[str, type["AnyElement"]]:
+    def available_classes(cls) -> dict[str, Type["AnyElement"]]:
         """Returns a dictionary of all registered element types."""
         return CLASS_MAP
 
@@ -698,7 +699,7 @@ AnyElement = (
 )
 
 
-def get_all_subclasses(cls) -> set[type[AnyElement]]:
+def get_all_subclasses(cls) -> set[Type[AnyElement]]:
     """Recursively finds all subclasses of a given class."""
     subclasses = set(cls.__subclasses__())
     for subclass in cls.__subclasses__():
@@ -706,12 +707,12 @@ def get_all_subclasses(cls) -> set[type[AnyElement]]:
     return subclasses
 
 
-CLASS_MAP: dict[str, type[AnyElement]] = {
+CLASS_MAP: dict[str, Type[AnyElement]] = {
     cls.__name__: cls for cls in get_all_subclasses(BaseElement)
 }
 
 
-def get_element_class(class_name: str) -> type[AnyElement]:
+def get_element_class(class_name: str) -> Type[AnyElement]:
     """Safely retrieves a BaseElement subclass by name."""
     cls = CLASS_MAP.get(class_name)
     if cls is None:
@@ -721,7 +722,7 @@ def get_element_class(class_name: str) -> type[AnyElement]:
     return cls
 
 
-def _cast_values(data: dict[str, Any], cls: type[AnyElement]) -> dict[str, Any]:
+def _cast_values(data: dict[str, Any], cls: Type[AnyElement]) -> dict[str, Any]:
     """Casts dictionary values to the correct types based on the dataclass fields."""
     casted_data = {}
     field_types = {f.name: f.type for f in fields(cls)}
