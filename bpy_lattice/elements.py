@@ -152,7 +152,7 @@ class BeamElement(BaseElement, ABC):
     length: float = 1
     width: float = 0.2
     height: float = 0.2
-    color = "grey"
+    color: str = "grey"
 
     def to_object(self):
         return self.to_basic_object()

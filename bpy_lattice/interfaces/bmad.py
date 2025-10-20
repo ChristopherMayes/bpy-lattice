@@ -256,6 +256,7 @@ def get_basic_element_kwargs_from_tao_data(data):
 
     return dict(
         name=str(data["name"]),
+        type=str(data.get("type", "")),
         x=float(data["floor_x"]),
         y=float(data["floor_y"]),
         z=float(data["floor_z"]),
