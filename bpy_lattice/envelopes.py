@@ -14,7 +14,24 @@ Vertex = namedtuple("Vertex", ["x", "y", "z"])
 @dataclass
 class EnvelopeLoop:
     """
-    A loop of vertices that form a cross-section for an Envelope
+    A loop of vertices that form a single closed 2D cross-section of an Envelope.
+
+    Parameters
+    ----------
+    vertices : list of Vertex or list of tuple
+        A sequence of 3D points defining the loop. Elements not already of type
+        `Vertex` will be cast as such.
+
+    Methods
+    -------
+    to_dict() -> dict
+        Serialize the EnvelopeLoop to a dictionary.
+    from_dict(data) -> EnvelopeLoop
+        Construct an EnvelopeLoop from a dictionary.
+    __len__() -> int
+        Return the number of vertices in the loop.
+    __getitem__(index)
+        Get a vertex by index.
     """
 
     vertices: List[Vertex]
@@ -58,7 +75,36 @@ class EnvelopeLoop:
 @dataclass
 class Envelope:
     """
-    Envelope
+    A 3D envelope constructed from one or more EnvelopeLoops.
+
+    Parameters
+    ----------
+    loops : list of EnvelopeLoop or list of list of Vertex-like
+        Cross-sectional profiles making up the envelope. Elements are converted
+        to `EnvelopeLoop` if necessary.
+    name : str, optional
+        Name of the envelope. Default is "envelope".
+    color : str or tuple of float, optional
+        Color used for rendering, either a color name or RGBA tuple. Default is "blue".
+
+    Methods
+    -------
+    to_dict() -> dict
+        Serialize the Envelope to a dictionary.
+    to_json(filepath) -> None
+        Save the Envelope to a JSON file.
+    from_dict(data) -> Envelope
+        Load an Envelope from a dictionary.
+    from_json(filepath) -> Envelope
+        Load an Envelope from a JSON file.
+    to_mesh(name=None) -> bpy.types.Mesh
+        Create a Blender mesh object from the envelope.
+    to_object() -> bpy.types.Object
+        Create a Blender object from the envelope, assigning color as a material.
+    __len__() -> int
+        Number of loops in the envelope.
+    __getitem__(index)
+        Get a loop by index.
     """
 
     loops: List[Union[EnvelopeLoop, List[Union[Vertex, Iterable[float]]]]]

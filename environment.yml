@@ -4,7 +4,7 @@ channels:
   - conda-forge
 dependencies:
   - python==3.11 # Required for latest Blender
-  - numpy<2 # Needed because of https://projects.blender.org/blender/blender/issues/134550
+  - numpy
   # Developer
   - openpmd-beamphysics
   - pytao >0.5.2
@@ -12,10 +12,10 @@ dependencies:
   - pytest-cov
   - jupyterlab>=3
   - pygments
-  - mkdocs==1.5.2
+  - mkdocs #==1.5.2
   - mkdocstrings
   - mkdocs-material
-  - mkdocs-jupyter==0.24.6
+  - mkdocs-jupyter #==0.24.6
   - mkdocstrings-python
   - pip
   - pip:

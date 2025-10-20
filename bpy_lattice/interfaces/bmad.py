@@ -399,7 +399,7 @@ def bpy_elements_from_tao(
 
 def write_bpy_lattice_json(tao, outfile, ele_ids=None):
     """
-    This writes the `.layout_table` style file that the
+    This writes the `.layout_table` JSON file that the
     bmad_to_blender Fortran program creates for bpy_lattice
 
     Notes
@@ -463,7 +463,8 @@ def bmad_to_blender_entrypoint():
         )
 
     parser = argparse.ArgumentParser(
-        description="Generate a lattice JSON from Tao using advanced element filtering."
+        description="Generate a lattice JSON from Tao using advanced element filtering.",
+        formatter_class=argparse.RawTextHelpFormatter,
     )
 
     parser.add_argument("lattice_file", type=str, help="Lattice file path")
@@ -474,16 +475,20 @@ def bmad_to_blender_entrypoint():
         help="Output JSON file path (default: based on lattice file)",
     )
     parser.add_argument(
+        "-e",
         "--elements",
         type=str,
-        nargs="+",
+        action="append",
         default=None,
         help=(
             "Selectors for lattice elements, for example: \n"
-            "- Specific element IDs: '1@2>>10'\n"
-            "- Universe index: '1'\n"
-            "- Universe and branch index: '1@2' (universe 1, branch 2)\n"
-            "- Leave blank to retrieve all elements in the superuniverse."
+            "- All elements from universe index: '1'\n"
+            "- All elements from branch index: '1@2' (universe 1, branch 2)\n"
+            "- One element by ID: '1@0>>10' (universe 1, branch 0, element 10)\n"
+            "- Leave blank to retrieve all elements in the superuniverse.\n"
+            "\n"
+            "May be specified multiple times to include multiple universes, elements, etc.\n"
+            "Be sure to use quotes for '>' characters!"
         ),
     )
     parser.add_argument("--verbose", action="store_true", help="Enable verbose logging")
@@ -496,7 +501,6 @@ def bmad_to_blender_entrypoint():
     )
     logger = logging.getLogger(__name__)
 
-    # Initialize Tao and process lattice
     lattice_file = pathlib.Path(args.lattice_file)
     if lattice_file.suffix.lower() == ".init":
         logger.info("Initializing Tao with: -init %s", args.lattice_file)
@@ -505,18 +509,16 @@ def bmad_to_blender_entrypoint():
         logger.info("Initializing Tao with lattice file: %s", args.lattice_file)
         tao = pytao.Tao(lattice_file=args.lattice_file, noplot=True)
 
-    # Determine output file name, if not provided
     if args.outfile is None:
         if lattice_file.suffix.lower() == ".bmad":
-            outfile = lattice_file.with_suffix(".layout_table")
+            outfile = lattice_file.with_suffix(".json")
         elif lattice_file.name.lower() == "tao.init":
-            outfile = "tao.layout_table"
+            outfile = "tao.json"
         else:
-            outfile = f"{args.lattice_file}.layout_table"
+            outfile = f"{args.lattice_file}.json"
     else:
         outfile = args.outfile
 
-    # Generate JSON using flexible selectors
     logger.info("Writing lattice JSON to: %s", outfile)
     ele_ids = tao.unique_ele_ids(*args.elements or [])
     write_bpy_lattice_json(tao, outfile, ele_ids=ele_ids)
