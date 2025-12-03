@@ -233,7 +233,7 @@ def get_basic_element_kwargs_from_tao_data(data):
     """
     Sets basic element data from tao data.
     """
-    descrip = data["descrip"]
+    descrip = data.get("descrip", "")
     cad_model = descrip.split("3DMODEL=")[-1].split(",")[0]  # Extract before the comma
     if cad_model:
         description = descrip.replace(cad_model, "")
