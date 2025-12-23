@@ -300,7 +300,7 @@ def get_length_from_element(key: EleKey, data):
         return None
 
     # zero-length elements
-    if key in (EleKey.GKICKER,):
+    if key in (EleKey.GKICKER, EleKey.MASK):
         return 1e-6
     if "l" not in data:
         raise AttributeError(f"'l' missing from {key}")
