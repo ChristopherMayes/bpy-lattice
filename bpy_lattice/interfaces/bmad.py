@@ -312,7 +312,7 @@ def bpy_element_from_tao(tao, ele_id):
 
 
 def get_length_from_element(key: EleKey, data):
-    if key in (EleKey.BEGINNING_ELE, EleKey.FIDUCIAL):
+    if key in (EleKey.BEGINNING_ELE, EleKey.FIDUCIAL, EleKey.MASK):
         return None
 
     # zero-length elements
