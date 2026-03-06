@@ -7,6 +7,7 @@ from .blend import (
     add_tracks_to_blender,
     add_envelopes_to_blender,
 )
+from .usd import lattice_to_usd
 from .elements import Element
 from .tracks import Track
 from .envelopes import Envelope
@@ -65,3 +66,52 @@ class Lattice:
 
     def add_tracks_to_blender(self, *, collection=None):
         return add_tracks_to_blender(self.tracks, collection=collection)
+
+    def to_usd(
+        self,
+        filepath: str | Path = "lattice.usda",
+        *,
+        up_axis: str = "Y",
+        meters_per_unit: float = 1.0,
+        catalogue: str | Path | None = None,
+        blender_cmd: str | None = None,
+        copy_models: bool = True,
+    ):
+        """
+        Export the lattice to a USD file.
+
+        Parameters
+        ----------
+        filepath : str or Path
+            Output file path.  Use ``.usda`` for ASCII, ``.usd`` / ``.usdc``
+            for binary.
+        up_axis : str
+            ``'Y'`` (USD / Omniverse default) or ``'Z'``.
+        meters_per_unit : float
+            Scene scale factor (default ``1.0`` = metres).
+        catalogue : str or Path, optional
+            Directory containing CAD model files.  Element
+            ``cad_model`` paths are resolved relative to this.
+        blender_cmd : str, optional
+            Path to the Blender executable for ``.blend`` → ``.usd``
+            conversion.  Auto-detected if *None*.
+        copy_models : bool
+            If ``True`` (default), USD model files from the catalogue
+            are copied next to the output for portability.  If
+            ``False``, they are referenced in place.
+
+        Returns
+        -------
+        pxr.Usd.Stage
+        """
+        return lattice_to_usd(
+            elements=self.elements,
+            tracks=self.tracks,
+            envelopes=self.envelopes,
+            filepath=filepath,
+            up_axis=up_axis,
+            meters_per_unit=meters_per_unit,
+            catalogue=catalogue,
+            blender_cmd=blender_cmd,
+            copy_models=copy_models,
+        )

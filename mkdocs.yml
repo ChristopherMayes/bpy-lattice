@@ -7,6 +7,8 @@ nav:
   - Examples:
     - examples/bmad_interface_example.ipynb
     - examples/beam_envelope_example.ipynb
+    - examples/usd/basic/usd_export.ipynb
+  - CLI Reference: cli.md
 
 theme:
   icon:

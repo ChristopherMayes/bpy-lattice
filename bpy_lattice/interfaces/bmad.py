@@ -483,6 +483,86 @@ def bmad_to_blender_entrypoint():
     logger.info("Lattice JSON generation completed successfully.")
 
 
+def bmad_to_usd_entrypoint():
+    """
+    Entry point for exporting a Bmad lattice to a USD file.
+
+    Parses command-line arguments for the lattice file, output USD path,
+    catalogue directory, and other options, then writes the USD file.
+    """
+    try:
+        import pytao
+    except ImportError:
+        raise RuntimeError(
+            "pytao is required to use this entrypoint. Install it with `python -m pip install pytao`"
+        )
+
+    from ..lattice import Lattice
+
+    parser = argparse.ArgumentParser(
+        description="Export a Bmad lattice to USD (Universal Scene Description)."
+    )
+
+    parser.add_argument("lattice_file", type=str, help="Bmad lattice file path")
+    parser.add_argument(
+        "outfile",
+        type=str,
+        nargs="?",
+        help="Output USD file path (default: based on lattice file, .usda)",
+    )
+    parser.add_argument(
+        "--catalogue",
+        type=str,
+        default=None,
+        help="Path to the CAD-model catalogue directory",
+    )
+    parser.add_argument(
+        "--up-axis",
+        type=str,
+        default="Y",
+        choices=["Y", "Z"],
+        help="Stage up-axis: Y (Omniverse default) or Z (Blender default)",
+    )
+    parser.add_argument(
+        "--no-copy-models",
+        action="store_true",
+        help="Reference catalogue USD models in place instead of copying",
+    )
+    parser.add_argument("--verbose", action="store_true", help="Enable verbose logging")
+    args = parser.parse_args()
+
+    # Set up logging
+    logging_level = logging.DEBUG if args.verbose else logging.INFO
+    logging.basicConfig(
+        level=logging_level, format="%(asctime)s - %(levelname)s - %(message)s"
+    )
+    logger = logging.getLogger(__name__)
+
+    # Determine output file name if not provided
+    if args.outfile is None:
+        if args.lattice_file.endswith(".bmad"):
+            outfile = args.lattice_file.replace(".bmad", ".usda")
+        else:
+            outfile = f"{args.lattice_file}.usda"
+    else:
+        outfile = args.outfile
+
+    # Create a running instance of PyTao
+    logger.info("Initializing Tao with lattice file: %s", args.lattice_file)
+    tao = pytao.Tao(lattice_file=args.lattice_file, noplot=True)
+
+    # Build lattice and export to USD
+    logger.info("Exporting lattice to USD: %s", outfile)
+    lattice = Lattice.from_tao(tao)
+    lattice.to_usd(
+        outfile,
+        up_axis=args.up_axis,
+        catalogue=args.catalogue,
+        copy_models=not args.no_copy_models,
+    )
+    logger.info("USD export completed successfully.")
+
+
 # Envelope and Bmad dump file
 
 
