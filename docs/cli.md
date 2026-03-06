@@ -21,6 +21,7 @@ bmad-to-usd lattice.bmad output.usd      # explicit output path
 | `--catalogue PATH` | Directory containing CAD model files (`.blend` / `.usd`). Element `cad_model` paths are resolved relative to this. |
 | `--up-axis {Y,Z}` | Stage up-axis. `Y` (default) for Omniverse, `Z` for Blender. |
 | `--no-copy-models` | Reference catalogue USD models in place instead of copying them next to the output. |
+| `--models-dir PATH` | Directory for converted/copied CAD models (default: `models/` next to output). |
 | `--verbose` | Enable verbose logging. |
 
 ### Examples

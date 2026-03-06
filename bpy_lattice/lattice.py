@@ -76,6 +76,7 @@ class Lattice:
         catalogue: str | Path | None = None,
         blender_cmd: str | None = None,
         copy_models: bool = True,
+        models_dir: str | Path | None = None,
     ):
         """
         Export the lattice to a USD file.
@@ -99,6 +100,9 @@ class Lattice:
             If ``True`` (default), USD model files from the catalogue
             are copied next to the output for portability.  If
             ``False``, they are referenced in place.
+        models_dir : str or Path, optional
+            Directory for converted / copied CAD model files.  Defaults
+            to a ``models/`` subdirectory next to the output file.
 
         Returns
         -------
@@ -114,4 +118,5 @@ class Lattice:
             catalogue=catalogue,
             blender_cmd=blender_cmd,
             copy_models=copy_models,
+            models_dir=models_dir,
         )

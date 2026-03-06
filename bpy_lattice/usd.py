@@ -782,6 +782,7 @@ def lattice_to_usd(
     catalogue: str | Path | None = None,
     blender_cmd: str | None = None,
     copy_models: bool = True,
+    models_dir: str | Path | None = None,
 ) -> Usd.Stage:
     """
     Export lattice data to a USD file.
@@ -813,6 +814,9 @@ def lattice_to_usd(
         copied into a ``models/`` subdirectory next to the output file
         for portability.  If ``False``, they are referenced in place
         (avoids duplication when the catalogue is always accessible).
+    models_dir : str or Path, optional
+        Directory for converted / copied CAD model files.  Defaults to
+        a ``models/`` subdirectory next to *filepath*.
 
     Returns
     -------
@@ -874,7 +878,9 @@ def lattice_to_usd(
             if blender_cmd is None:
                 blender_cmd = _find_blender()
 
-            models_dir = output_dir / "models"
+            models_dir = (
+                Path(models_dir) if models_dir is not None else output_dir / "models"
+            )
             converted_models = _convert_catalogue_models(
                 elements,
                 catalogue,

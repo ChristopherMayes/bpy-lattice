@@ -528,6 +528,12 @@ def bmad_to_usd_entrypoint():
         action="store_true",
         help="Reference catalogue USD models in place instead of copying",
     )
+    parser.add_argument(
+        "--models-dir",
+        type=str,
+        default=None,
+        help="Directory for converted/copied CAD models (default: models/ next to output)",
+    )
     parser.add_argument("--verbose", action="store_true", help="Enable verbose logging")
     args = parser.parse_args()
 
@@ -559,6 +565,7 @@ def bmad_to_usd_entrypoint():
         up_axis=args.up_axis,
         catalogue=args.catalogue,
         copy_models=not args.no_copy_models,
+        models_dir=args.models_dir,
     )
     logger.info("USD export completed successfully.")
 
