@@ -34,6 +34,7 @@ file = "LICENSE.txt"
 
 [project.scripts]
 bmad-to-blender = "bpy_lattice.interfaces.bmad:bmad_to_blender_entrypoint"
+bmad-to-usd = "bpy_lattice.interfaces.bmad:bmad_to_usd_entrypoint"
 
 [tool.ruff]
 # select = []

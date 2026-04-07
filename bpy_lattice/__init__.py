@@ -10,6 +10,7 @@ from .blend import remap_zx
 from .lattice import Lattice
 from .tracks import Track
 from .envelopes import Envelope
+from .usd import lattice_to_usd
 
 try:
     from ._version import __version__
@@ -27,4 +28,5 @@ __all__ = [
     "Envelope",
     "Lattice",
     "Track",
+    "lattice_to_usd",
 ]
