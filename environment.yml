@@ -5,7 +5,6 @@ channels:
 dependencies:
   - python==3.11 # Required for latest Blender
   - numpy
-  # - openusd  # using PyPI dep for now due to this: https://github.com/conda-forge/openusd-feedstock/issues/9
   # Developer
   - openpmd-beamphysics
   - pytao >0.5.2
