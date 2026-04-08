@@ -1,11 +1,14 @@
+from __future__ import annotations
+
 import argparse
 import logging
+import pathlib
+import typing
 from enum import StrEnum
 from typing import Literal
 import numpy as np
 from ..envelopes import Envelope, EnvelopeLoop
 
-# from pytao import Tao
 from ..elements import (
     Aperture,
     Bend,
@@ -15,6 +18,9 @@ from ..elements import (
 from ..types import ApertureShape
 
 from ..tracks import Track
+
+if typing.TYPE_CHECKING:
+    from pytao import Tao
 
 #
 #
@@ -226,6 +232,14 @@ def get_ele_data(tao, ele_id):
     #    print(info)
     #    raise NotImplementedError(key)
 
+    ix_universe = info["universe"]
+    ix_branch = info[f"{ix_universe}^ix_branch"]
+    branch1 = tao.branch1(ix_uni=ix_universe, ix_branch=ix_branch)
+    info["metadata"] = {
+        "ix_universe": ix_universe,
+        "ix_branch": ix_branch,
+        "branch": branch1["name"],
+    }
     return info
 
 
@@ -242,6 +256,7 @@ def get_basic_element_kwargs_from_tao_data(data):
 
     return dict(
         name=str(data["name"]),
+        type=str(data.get("type", "")),
         x=float(data["floor_x"]),
         y=float(data["floor_y"]),
         z=float(data["floor_z"]),
@@ -250,6 +265,7 @@ def get_basic_element_kwargs_from_tao_data(data):
         psi=float(data["floor_psi"]),
         description=description,
         cad_model=cad_model,
+        metadata=data.get("metadata", {}),
     )
 
 
@@ -296,7 +312,7 @@ def bpy_element_from_tao(tao, ele_id):
 
 
 def get_length_from_element(key: EleKey, data):
-    if key in (EleKey.BEGINNING_ELE, EleKey.FIDUCIAL):
+    if key in (EleKey.BEGINNING_ELE, EleKey.FIDUCIAL, EleKey.MASK):
         return None
 
     # zero-length elements
@@ -345,16 +361,33 @@ def bpy_element_from_tao_data(data):
 
 
 def bpy_elements_from_tao(
-    tao,
-    ele_ids=None,
-    add_bend_pipes=True,
-):
+    tao: Tao,
+    ele_ids: list[str] | None = None,
+    add_bend_pipes: bool = True,
+) -> list:
+    """
+    Convert Tao elements into Blender (bpy) elements.
+
+    Parameters
+    ----------
+    tao : Tao
+        The Tao object.
+    ele_ids : list of int or str, optional
+        A list of element IDs to convert. If not provided, all unique elements
+        will be retrieved using the "-no_slaves" flag.
+    add_bend_pipes : bool, default=True
+        A flag to include additional adjustments for bend pipes.
+
+    Returns
+    -------
+    list
+        A list of Blender (bpy) elements corresponding to the input element IDs.
+    """
     if ele_ids is None:
         ele_ids = tao.lat_list("*", "ele.ix_ele", flags="-no_slaves")
 
     eles = []
     for ele_id in ele_ids:
-        # print(ele_id)
         ele = bpy_element_from_tao(tao, ele_id)
 
         if ele is None:
@@ -367,7 +400,7 @@ def bpy_elements_from_tao(
 
 def write_bpy_lattice_json(tao, outfile, ele_ids=None):
     """
-    This writes the `.layout_table` style file that the
+    This writes the `.layout_table` JSON file that the
     bmad_to_blender Fortran program creates for bpy_lattice
 
     Notes
@@ -377,20 +410,15 @@ def write_bpy_lattice_json(tao, outfile, ele_ids=None):
 
     Parameters
     ----------
-    tao: PyTao.tao
+    tao : PyTao.tao
         running instance of tao
-
-    outfile: str
+    outfile : str
         File to write to
-
-    ele_ids: list of str or int, optional
+    ele_ids : list of str or int, optional
         List of elements to extract
         Default: None => will match all unique elements of the lattice (i.e., without slaves)
-
-
     """
     eles = bpy_elements_from_tao(tao, ele_ids=ele_ids)
-
     save_elements_to_json(eles, outfile)
 
 
@@ -424,8 +452,9 @@ def bmad_to_blender_entrypoint():
     """
     Entry point for generating a lattice JSON from a Bmad lattice file.
 
-    This function parses command-line arguments to specify the lattice file, output file, element list, and verbosity level.
-    It initializes an instance of PyTao, processes the lattice data, and writes the output JSON.
+    This function parses command-line arguments to specify the lattice file,
+    output file, element list, and verbosity level. It initializes an instance
+    of PyTao, processes the lattice data, and writes the output JSON.
     """
     try:
         import pytao
@@ -434,9 +463,10 @@ def bmad_to_blender_entrypoint():
             "pytao is required to use this entrypoint. Install it with `python -m pip install pytao`"
         )
 
-    from ..lattice import Lattice
-
-    parser = argparse.ArgumentParser(description="Generate a lattice JSON from Tao.")
+    parser = argparse.ArgumentParser(
+        description="Generate a lattice JSON from Tao using advanced element filtering.",
+        formatter_class=argparse.RawTextHelpFormatter,
+    )
 
     parser.add_argument("lattice_file", type=str, help="Lattice file path")
     parser.add_argument(
@@ -445,41 +475,54 @@ def bmad_to_blender_entrypoint():
         nargs="?",
         help="Output JSON file path (default: based on lattice file)",
     )
-    # parser.add_argument(
-    #    "--elements",
-    #    type=int,
-    #    nargs="+",
-    #    default=None,
-    #    help="List of element IDs to extract (default: all elements)",
-    # )
+    parser.add_argument(
+        "-e",
+        "--elements",
+        type=str,
+        action="append",
+        default=None,
+        help=(
+            "Selectors for lattice elements, for example: \n"
+            "- All elements from universe index: '1'\n"
+            "- All elements from branch index: '1@2' (universe 1, branch 2)\n"
+            "- One element by ID: '1@0>>10' (universe 1, branch 0, element 10)\n"
+            "- Leave blank to retrieve all elements in the superuniverse.\n"
+            "\n"
+            "May be specified multiple times to include multiple universes, elements, etc.\n"
+            "Be sure to use quotes for '>' characters!"
+        ),
+    )
     parser.add_argument("--verbose", action="store_true", help="Enable verbose logging")
     args = parser.parse_args()
 
-    # Set up logging
+    # Configure logging
     logging_level = logging.DEBUG if args.verbose else logging.INFO
     logging.basicConfig(
         level=logging_level, format="%(asctime)s - %(levelname)s - %(message)s"
     )
     logger = logging.getLogger(__name__)
 
-    # Determine output file name if not provided
+    lattice_file = pathlib.Path(args.lattice_file)
+    if lattice_file.suffix.lower() == ".init":
+        logger.info("Initializing Tao with: -init %s", args.lattice_file)
+        tao = pytao.Tao(init_file=args.lattice_file, noplot=True)
+    else:
+        logger.info("Initializing Tao with lattice file: %s", args.lattice_file)
+        tao = pytao.Tao(lattice_file=args.lattice_file, noplot=True)
+
     if args.outfile is None:
-        if args.lattice_file.endswith(".bmad"):
-            outfile = args.lattice_file.replace(".bmad", ".json")
+        if lattice_file.suffix.lower() == ".bmad":
+            outfile = lattice_file.with_suffix(".json")
+        elif lattice_file.name.lower() == "tao.init":
+            outfile = "tao.json"
         else:
             outfile = f"{args.lattice_file}.json"
     else:
         outfile = args.outfile
 
-    # Create a running instance of PyTao
-    logger.info("Initializing Tao with lattice file: %s", args.lattice_file)
-    tao = pytao.Tao(lattice_file=args.lattice_file, noplot=True)
-
-    # Call the function to write the CSV
     logger.info("Writing lattice JSON to: %s", outfile)
-    # write_bpy_lattice_json(tao, outfile, ele_ids=args.elements)
-    lattice = Lattice.from_tao(tao)
-    lattice.to_json(outfile)
+    ele_ids = tao.unique_ele_ids(*args.elements or [])
+    write_bpy_lattice_json(tao, outfile, ele_ids=ele_ids)
     logger.info("Lattice JSON generation completed successfully.")
 
 

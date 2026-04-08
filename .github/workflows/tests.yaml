@@ -31,13 +31,12 @@ jobs:
       - uses: ./.github/actions/conda-setup
         with:
           python-version: ${{ matrix.python-version }}
-          extras: "dev"
       - name: Test environment conda package list
         shell: bash -l {0}
         run: |
           conda list
       - name: Run unit tests
-        shell: bash -l {0}
+        shell: bash -l -e -o pipefail {0}
         run: |
           echo -e '## Test results\n\n```' >> "$GITHUB_STEP_SUMMARY"
           pytest -v 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"

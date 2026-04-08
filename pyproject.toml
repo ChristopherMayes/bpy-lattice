@@ -11,8 +11,9 @@ classifiers = [
   "Topic :: Scientific/Engineering",
 ]
 dependencies = [
-  "numpy<2", # Needed because of https://projects.blender.org/blender/blender/issues/134550
+  "numpy",
   "bpy",
+  "usd-core", # for bmad-to-usd support
 ]
 description = "Tools for creating particle accelerator models in Blender"
 dynamic = ["version"]
