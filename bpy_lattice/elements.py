@@ -733,7 +733,7 @@ def _cast_values(data: dict[str, Any], cls: Type[AnyElement]) -> dict[str, Any]:
 
         target_type = field_types[key]
 
-        if issubclass(target_type, StrEnum):
+        if isinstance(target_type, type) and issubclass(target_type, StrEnum):
             casted_data[key] = target_type(value) if value else target_type()
 
         elif target_type in (int, float):
@@ -743,7 +743,7 @@ def _cast_values(data: dict[str, Any], cls: Type[AnyElement]) -> dict[str, Any]:
             except ValueError:
                 casted_data[key] = target_type()  # Use default if conversion fails
 
-        elif is_dataclass(target_type):
+        elif isinstance(target_type, type) and is_dataclass(target_type):
             if isinstance(value, dict):
                 casted_data[key] = target_type(**value)
             else:
@@ -793,14 +793,17 @@ def load_elements_from_csv(filename: str) -> list[AnyElement]:
 def save_elements_to_json(elements: list[BaseElement], filename: str):
     """Saves a list of Element objects to a JSON file."""
     with open(filename, "w") as file:
-        json.dump([elem.to_dict() for elem in elements], file, indent=4)
+        json.dump({"elements": [elem.to_dict() for elem in elements]}, file, indent=4)
 
 
 def load_elements_from_json(filename: str) -> list[BaseElement]:
     """Loads a list of Element objects from a JSON file."""
     with open(filename) as file:
         data = json.load(file)
-    return [BaseElement.from_dict(item) for item in data]
+    if isinstance(data, list):
+        # Legacy format: bare list of element dicts
+        return [BaseElement.from_dict(item) for item in data]
+    return [BaseElement.from_dict(item) for item in data["elements"]]
 
 
 def _flatten_dict(dct: dict) -> dict:

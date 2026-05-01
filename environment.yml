@@ -3,7 +3,7 @@ name: bpy_lattice-dev
 channels:
   - conda-forge
 dependencies:
-  - python==3.11 # Required for latest Blender
+  - python==3.13 # Required for latest Blender 5.1
   - numpy
   # Developer
   - openpmd-beamphysics
@@ -20,4 +20,4 @@ dependencies:
   - pip
   - pip:
       - bpy
-      - usd-core
+      #- usd-core
