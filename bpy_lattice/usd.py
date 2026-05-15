@@ -9,10 +9,10 @@ Key design: Prototype geometry is defined once under ``/Root/Prototypes``
 under ``/Root/Elements`` via USD internal references.
 
 When a *catalogue* directory is supplied, ``.blend`` CAD model files are
-converted to ``.usd`` via Blender in headless mode, stored in a
-``models/`` directory alongside the output file, and referenced from the
-prototypes.  Elements whose ``.blend`` file cannot be found or converted
-fall back to procedural geometry.
+converted to ``.usd`` via ``bpy`` (when available) or Blender in headless
+mode, stored in a ``models/`` directory alongside the output file, and
+referenced from the prototypes.  Elements whose ``.blend`` file cannot be
+found or converted fall back to procedural geometry.
 
 Usage
 -----
@@ -50,6 +50,7 @@ from .elements import (
     Bend,
     Fiducial,
     Pipe,
+    Undulator,
 )
 
 if TYPE_CHECKING:
@@ -440,6 +441,14 @@ def _apply_element_transform(xform: UsdGeom.Xform, ele: BaseElement) -> None:
 # Blend file → USD conversion
 # ---------------------------------------------------------------------------
 
+# Try to import bpy once at module load; may not be available outside Blender.
+try:
+    import bpy as _bpy  # noqa: F401
+
+    _HAS_BPY = True
+except Exception:
+    _HAS_BPY = False
+
 
 def _find_blender() -> str | None:
     """Auto-detect the Blender executable."""
@@ -453,18 +462,57 @@ def _find_blender() -> str | None:
     return None
 
 
-def _convert_blend_to_usd(
+def _convert_blend_to_usd_bpy(
+    blend_path: Path,
+    usd_path: Path,
+) -> bool:
+    """Convert a ``.blend`` file to ``.usd`` using ``bpy`` directly.
+
+    This is faster than launching a Blender subprocess and avoids the
+    need for an external Blender executable.
+    """
+    import bpy  # guaranteed available when this function is called
+
+    usd_path.parent.mkdir(parents=True, exist_ok=True)
+    # The USD exporter writes textures into a sibling textures/ directory.
+    (usd_path.parent / "textures").mkdir(exist_ok=True)
+
+    try:
+        bpy.ops.wm.open_mainfile(filepath=str(blend_path))
+
+        # Parent all root-level objects under a wrapper so
+        # the exported USD has one clean default prim.
+        orphans = [obj for obj in bpy.data.objects if obj.parent is None]
+        if len(orphans) != 1:
+            root = bpy.data.objects.new("model", None)
+            bpy.context.scene.collection.objects.link(root)
+            for obj in orphans:
+                obj.parent = root
+
+        bpy.ops.wm.usd_export(filepath=str(usd_path))
+        return usd_path.exists()
+    except Exception as exc:
+        print(f"  ⛔ bpy conversion failed for {blend_path.name}: {exc}")
+        return False
+
+
+def _convert_blend_to_usd_subprocess(
     blend_path: Path,
     usd_path: Path,
     blender_cmd: str,
 ) -> bool:
     """Convert a ``.blend`` file to ``.usd`` using Blender in headless mode."""
     usd_path.parent.mkdir(parents=True, exist_ok=True)
+    (usd_path.parent / "textures").mkdir(exist_ok=True)
 
     # The script groups all root-level objects under a single Xform so the
     # exported USD always has one clean default prim.
     script = f"""\
 import bpy
+import pathlib
+
+# Ensure textures dir exists (USD exporter writes here)
+pathlib.Path(r"{usd_path.parent / 'textures'}").mkdir(exist_ok=True)
 
 # Parent all root-level objects under a wrapper so USD gets a single root
 orphans = [obj for obj in bpy.data.objects if obj.parent is None]
@@ -511,6 +559,29 @@ bpy.ops.wm.usd_export(filepath=r"{usd_path}")
         Path(script_file).unlink(missing_ok=True)
 
 
+def _convert_blend_to_usd(
+    blend_path: Path,
+    usd_path: Path,
+    blender_cmd: str | None = None,
+) -> bool:
+    """Convert a ``.blend`` file to ``.usd``.
+
+    Uses ``bpy`` directly when available (fastest), otherwise falls back
+    to launching Blender as a subprocess.
+    """
+    if _HAS_BPY:
+        return _convert_blend_to_usd_bpy(blend_path, usd_path)
+
+    if blender_cmd is None:
+        print(
+            f"  ⛔ Neither bpy nor Blender executable available – "
+            f"cannot convert {blend_path.name}"
+        )
+        return False
+
+    return _convert_blend_to_usd_subprocess(blend_path, usd_path, blender_cmd)
+
+
 def _ensure_default_prim(usd_path: Path) -> bool:
     """Ensure the model USD file has a ``defaultPrim`` set."""
     layer = Sdf.Layer.FindOrOpen(str(usd_path))
@@ -548,8 +619,8 @@ def _convert_catalogue_models(
       directly.  When *copy_models* is ``True`` they are copied into
       *models_dir* for portability; when ``False`` they are referenced
       in place.
-    * ``.blend`` files are converted to ``.usd`` via Blender headless
-      (always written to *models_dir*).
+    * ``.blend`` files are converted to ``.usd`` via ``bpy`` (when
+      available) or Blender headless (always written to *models_dir*).
     * Already-converted / already-copied files in *models_dir* are
       reused.
 
@@ -619,10 +690,10 @@ def _convert_catalogue_models(
             converted[cad_model] = usd_path
             continue
 
-        if blender_cmd is None:
+        if not _HAS_BPY and blender_cmd is None:
             print(
-                f"  ⛔ Blender not found – cannot convert {cad_model} "
-                f"(will use procedural geometry)"
+                f"  ⛔ Neither bpy nor Blender executable available – "
+                f"cannot convert {cad_model} (will use procedural geometry)"
             )
             continue
 
@@ -807,8 +878,9 @@ def lattice_to_usd(
         ``cad_model`` fields are resolved relative to this path.
     blender_cmd : str, optional
         Path to the Blender executable for ``.blend`` → ``.usd``
-        conversion.  If *None*, auto-detected from ``PATH`` and common
-        install locations.
+        conversion.  Only needed when ``bpy`` is not importable.
+        If *None*, auto-detected from ``PATH`` and common install
+        locations.
     copy_models : bool
         If ``True`` (default), USD model files from the catalogue are
         copied into a ``models/`` subdirectory next to the output file
@@ -834,9 +906,10 @@ def lattice_to_usd(
         the file renders correctly in Omniverse, Blender, and other DCC
         tools.
     *   When *catalogue* is supplied, each unique ``.blend`` model is
-        converted to ``.usd`` via Blender headless and referenced from
-        the prototype.  Conversion results are cached in the ``models/``
-        directory so subsequent exports are fast.
+        converted to ``.usd`` via ``bpy`` (when available) or Blender
+        headless, and referenced from the prototype.  Conversion
+        results are cached in the ``models/`` directory so subsequent
+        exports are fast.
     """
     filepath = Path(filepath)
     filepath_str = str(filepath)
@@ -875,7 +948,7 @@ def lattice_to_usd(
         if not catalogue.exists():
             print(f"⚠️  Catalogue not found: {catalogue}")
         else:
-            if blender_cmd is None:
+            if blender_cmd is None and not _HAS_BPY:
                 blender_cmd = _find_blender()
 
             models_dir = (
@@ -930,6 +1003,28 @@ def lattice_to_usd(
                     rel_model = os.path.relpath(model_usd_path, output_dir)
                     proto_prim.GetReferences().AddReference(assetPath=str(rel_model))
                     used_cad = True
+
+                    # Special case: Bends and Undulators also get an
+                    # aperture pipe alongside the CAD model (matches
+                    # the Blender workflow in add_elements_to_blender).
+                    if isinstance(ele, (Bend, Undulator)):
+                        ap = ele.aperture
+                        if (ap.x1_limit + ap.x2_limit > 0) and (
+                            ap.y1_limit + ap.y2_limit > 0
+                        ):
+                            pipe_path = f"{proto_path}/aperture"
+                            _make_pipe_mesh(
+                                stage,
+                                pipe_path,
+                                max(ele.length, 1e-6),
+                                ap.x1_limit,
+                                ap.y1_limit,
+                                thickness=ap.thickness or 0.001,
+                            )
+                            pipe_rgba = resolve_color("darkgrey")
+                            _set_display_color(stage, pipe_path, pipe_rgba)
+                            pipe_mat = _get_or_create_material("darkgrey")
+                            _bind_material_recursive(stage, pipe_path, pipe_mat)
 
                 if not used_cad:
                     # Procedural geometry fallback
