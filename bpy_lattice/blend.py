@@ -8,6 +8,7 @@ from .elements import AnyElement, Bend, Undulator
 from .tracks import Track
 from .envelopes import Envelope
 from .objects import add_children_from_blend, remap_axes
+from .materials import assign_emissive_material
 
 
 def remove_unused_data():
@@ -119,13 +120,18 @@ def add_elements_to_blender(
     return library_cache, objs
 
 
-def add_tracks_to_blender(tracks: list[Track], collection=None):
+def add_tracks_to_blender(
+    tracks: list[Track], collection=None, emissive=False, emission_strength=5.0
+):
     if collection is None:
         collection = bpy.data.collections.new("Tracks")
         bpy.context.scene.collection.children.link(collection)
     curves = []
     for track in tracks:
         curve = track.to_curve()
+        if emissive:
+            color = track.color if track.color else "purple"
+            assign_emissive_material(curve, color, strength=emission_strength)
         collection.objects.link(curve)
         curves.append(curve)
     return curves

@@ -64,8 +64,15 @@ class Lattice:
     def add_envelopes_to_blender(self, *, collection=None):
         return add_envelopes_to_blender(self.envelopes, collection=collection)
 
-    def add_tracks_to_blender(self, *, collection=None):
-        return add_tracks_to_blender(self.tracks, collection=collection)
+    def add_tracks_to_blender(
+        self, *, collection=None, emissive=False, emission_strength=5.0
+    ):
+        return add_tracks_to_blender(
+            self.tracks,
+            collection=collection,
+            emissive=emissive,
+            emission_strength=emission_strength,
+        )
 
     def to_usd(
         self,

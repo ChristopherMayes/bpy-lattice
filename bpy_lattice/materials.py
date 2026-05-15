@@ -73,3 +73,45 @@ def assign_color_material(obj, color, material_name_prefix="Mat"):
         obj.data.materials.append(mat)
 
     return mat
+
+
+def assign_emissive_material(obj, color, strength=5.0, material_name_prefix="Emissive"):
+    """
+    Create and assign an emissive material with the given color to a Blender object.
+
+    Args:
+        obj: The Blender object to assign the material to.
+        color: The color (ColorName, str, hex, or tuple).
+        strength: Emission strength.
+        material_name_prefix: Prefix for the auto-generated material name.
+    """
+    if not hasattr(obj, "data") or not hasattr(obj.data, "materials"):
+        print(f"⚠️ Object '{obj.name}' does not support materials. Skipping.")
+        return None
+
+    rgba = resolve_color(color)
+    color_str = f"{int(rgba[0]*255):02x}{int(rgba[1]*255):02x}{int(rgba[2]*255):02x}"
+    mat_name = f"{material_name_prefix}_{color_str}"
+
+    mat = bpy.data.materials.get(mat_name)
+    if mat is None:
+        mat = bpy.data.materials.new(name=mat_name)
+        mat.use_nodes = True
+        nodes = mat.node_tree.nodes
+        links = mat.node_tree.links
+        nodes.clear()
+
+        node_emission = nodes.new(type="ShaderNodeEmission")
+        node_emission.inputs["Color"].default_value = rgba
+        node_emission.inputs["Strength"].default_value = strength
+
+        node_output = nodes.new(type="ShaderNodeOutputMaterial")
+        node_output.location = (400, 0)
+        links.new(node_output.inputs["Surface"], node_emission.outputs["Emission"])
+
+    if obj.data.materials:
+        obj.data.materials[0] = mat
+    else:
+        obj.data.materials.append(mat)
+
+    return mat
