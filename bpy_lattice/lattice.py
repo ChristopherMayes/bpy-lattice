@@ -47,8 +47,8 @@ class Lattice:
         return cls.from_dict(data)
 
     @classmethod
-    def from_tao(cls, tao, ix_branch=0, include_dump_file=False):
-        elements = bpy_elements_from_tao(tao)
+    def from_tao(cls, tao, ele_ids=None):
+        elements = bpy_elements_from_tao(tao, ele_ids=ele_ids)
         orbit = floor_orbit_track_from_tao(tao)
 
         return cls(elements=elements, tracks=[orbit])

@@ -522,7 +522,11 @@ def bmad_to_blender_entrypoint():
 
     logger.info("Writing lattice JSON to: %s", outfile)
     ele_ids = tao.unique_ele_ids(*args.elements or [])
-    write_bpy_lattice_json(tao, outfile, ele_ids=ele_ids)
+
+    from ..lattice import Lattice
+
+    lattice = Lattice.from_tao(tao, ele_ids=ele_ids)
+    lattice.to_json(outfile)
     logger.info("Lattice JSON generation completed successfully.")
 
 
