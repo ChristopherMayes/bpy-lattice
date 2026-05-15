@@ -44,10 +44,20 @@ def assign_color_material(obj, color, material_name_prefix="Mat"):
     """
     Create and assign a diffuse material with the given color to a Blender object.
 
-    Args:
-        obj: The Blender object to assign the material to.
-        color: The color (ColorName, str, hex, or tuple).
-        material_name_prefix: Prefix for the auto-generated material name.
+    Parameters
+    ----------
+    obj : bpy.types.Object
+        The Blender object to assign the material to.
+    color : ColorName, str, or tuple
+        The color as a named color, hex string, or RGBA tuple.
+    material_name_prefix : str
+        Prefix for the auto-generated material name.
+
+    Returns
+    -------
+    bpy.types.Material or None
+        The created or existing material, or None if the object
+        does not support materials.
     """
     if not hasattr(obj, "data") or not hasattr(obj.data, "materials"):
         print(f"⚠️ Object '{obj.name}' does not support materials. Skipping.")
@@ -79,11 +89,22 @@ def assign_emissive_material(obj, color, strength=5.0, material_name_prefix="Emi
     """
     Create and assign an emissive material with the given color to a Blender object.
 
-    Args:
-        obj: The Blender object to assign the material to.
-        color: The color (ColorName, str, hex, or tuple).
-        strength: Emission strength.
-        material_name_prefix: Prefix for the auto-generated material name.
+    Parameters
+    ----------
+    obj : bpy.types.Object
+        The Blender object to assign the material to.
+    color : ColorName, str, or tuple
+        The color as a named color, hex string, or RGBA tuple.
+    strength : float
+        Emission strength.
+    material_name_prefix : str
+        Prefix for the auto-generated material name.
+
+    Returns
+    -------
+    bpy.types.Material or None
+        The created or existing material, or None if the object
+        does not support materials.
     """
     if not hasattr(obj, "data") or not hasattr(obj.data, "materials"):
         print(f"⚠️ Object '{obj.name}' does not support materials. Skipping.")

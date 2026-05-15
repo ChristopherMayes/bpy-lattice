@@ -286,25 +286,20 @@ def get_aperture_from_tao_data(data):
 
 def bpy_element_from_tao(tao, ele_id):
     """
-
-    Create elements from a single Tao element.
-
-    Multiple elements are created
-
+    Create a bpy element from a single Tao element.
 
     Parameters
     ----------
     tao : pytao.Tao
-        running instance of tao
-
+        Running instance of Tao.
     ele_id : int or str
         Element ID to look up in Tao.
         For Mirror elements, the previous element is used for the floor calc.
 
     Returns
     -------
-
-
+    Element or None
+        The corresponding bpy element, or None if the element is skipped.
     """
     data = get_ele_data(tao, ele_id)
     return bpy_element_from_tao_data(data)

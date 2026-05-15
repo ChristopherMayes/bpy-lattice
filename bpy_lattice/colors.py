@@ -70,10 +70,14 @@ def generate_color_enum_and_dict(enum_name: str = "ColorName") -> str:
     """
     Generate Python source code for a StrEnum of CSS4 color names and a dict of RGBA values.
 
-    Args:
-        enum_name: The name to give the generated StrEnum class.
+    Parameters
+    ----------
+    enum_name : str
+        The name to give the generated StrEnum class.
 
-    Returns:
+    Returns
+    -------
+    str
         A string containing the full Python source code.
     """
     import matplotlib.colors as mcolors
@@ -110,8 +114,10 @@ def write_named_colors_py(output_path: str = "named_colors.py") -> None:
     """
     Generate and save the named_colors.py file.
 
-    Args:
-        output_path: File path to save the generated Python module.
+    Parameters
+    ----------
+    output_path : str
+        File path to save the generated Python module.
     """
     code = generate_color_enum_and_dict()
     with open(output_path, "w", encoding="utf-8") as f:
