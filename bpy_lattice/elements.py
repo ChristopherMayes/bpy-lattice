@@ -282,7 +282,7 @@ class Bend(BeamElement):
     edge_angle1: float = 0.0
     edge_angle2: float = 0.0
     b_field: float = 0.0
-    color = "red"
+    color: str = "red"
 
     @property
     def angle(self):
@@ -323,7 +323,7 @@ class Collimator(BeamElement):
     Collimation element.
     """
 
-    color = "darkgrey"
+    color: str = "darkgrey"
 
 
 @dataclass
@@ -332,7 +332,7 @@ class Converter(BeamElement):
     Target to produce new species. EG: Positron converter.
     """
 
-    color = "gold"
+    color: str = "gold"
 
 
 @dataclass
@@ -342,7 +342,7 @@ class CrabCavity(BeamElement):
     """
 
     voltage: float = 0.0
-    color = "darkviolet"
+    color: str = "darkviolet"
 
 
 @dataclass
@@ -351,7 +351,7 @@ class Crystal(BeamElement):
     X-ray Diffraction crystal.
     """
 
-    color = "azure"
+    color: str = "azure"
 
 
 @dataclass
@@ -361,7 +361,7 @@ class Drift(BeamElement):
     """
 
     curvature: float = 0.0
-    color = "grey"
+    color: str = "grey"
 
 
 @dataclass
@@ -371,7 +371,7 @@ class EGun(BeamElement):
     """
 
     voltage: float = 0.0
-    color = "honeydew"
+    color: str = "honeydew"
 
 
 @dataclass
@@ -401,7 +401,7 @@ class Foil(BeamElement):
     Strips electrons from an atom.
     """
 
-    color = "silver"
+    color: str = "silver"
     pass
 
 
@@ -429,7 +429,7 @@ class Instrument(BeamElement):
     Measurement element.
     """
 
-    color = "brown"
+    color: str = "brown"
 
 
 @dataclass
@@ -448,7 +448,7 @@ class LCavity(BeamElement):
     """
 
     voltage: float = 0.0
-    color = "green"
+    color: str = "green"
 
 
 @dataclass
@@ -459,7 +459,7 @@ class Marker(BeamElement):
 
     width: float = 0.4
     height: float = 0.4
-    color = "black"
+    color: str = "black"
 
 
 # Use collimator
@@ -486,7 +486,7 @@ class Mirror(BeamElement):
     X-ray mirror.
     """
 
-    color = "silver"
+    color: str = "silver"
 
     def to_basic_object(self):
         """
@@ -520,7 +520,7 @@ class Multipole(BeamElement):
     Multipole
     """
 
-    color = "pink"
+    color: str = "pink"
     pass
 
 
@@ -548,7 +548,7 @@ class Octupole(BeamElement):
     """
 
     b3_gradient: float = 0.0
-    color = "purple"
+    color: str = "purple"
 
 
 @dataclass
@@ -566,13 +566,13 @@ class Pipe(BeamElement):
     Reference orbit shift.
     """
 
-    color = "darkgrey"
+    color: str = "darkgrey"
 
     def to_object(self):
         # A pipe is the aperture
         obj = self.aperture_object(suffix="")
         if obj is None:
-            obj = make_basic_empty_object(name=self.name)
+            return self.to_basic_object()
 
         assign_color_material(obj, self.color)
 
@@ -589,7 +589,7 @@ class Quadrupole(BeamElement):
     """
 
     b1_gradient: float = 0.0
-    color = "blue"
+    color: str = "blue"
 
 
 @dataclass
@@ -599,7 +599,7 @@ class RFCavity(BeamElement):
     """
 
     voltage: float = 0.0
-    color = "green"
+    color: str = "green"
 
 
 @dataclass
@@ -609,7 +609,7 @@ class Sextupole(BeamElement):
     """
 
     b2_gradient: float = 0.0
-    color = "yellow"
+    color: str = "yellow"
 
 
 @dataclass
@@ -619,7 +619,7 @@ class Solenoid(BeamElement):
     """
 
     bs_field: float = 0.0
-    color = "purple"
+    color: str = "purple"
 
 
 @dataclass
@@ -628,7 +628,7 @@ class Taylor(BeamElement):
     General Taylor map element.
     """
 
-    color = "olive"
+    color: str = "olive"
     pass
 
 
@@ -638,7 +638,7 @@ class Undulator(BeamElement):
     Undulator.
     """
 
-    color = "orange"
+    color: str = "orange"
 
 
 # not sure about this one
