@@ -13,7 +13,6 @@ from ..elements import (
     Aperture,
     Bend,
     get_element_class,
-    save_elements_to_json,
 )
 from ..types import ApertureShape
 
@@ -396,30 +395,6 @@ def bpy_elements_from_tao(
         eles.append(ele)
 
     return eles
-
-
-def write_bpy_lattice_json(tao, outfile, ele_ids=None):
-    """
-    This writes the `.layout_table` JSON file that the
-    bmad_to_blender Fortran program creates for bpy_lattice
-
-    Notes
-    -----
-    This is intended to replace the functionality of:
-    https://github.com/bmad-sim/bmad-ecosystem/blob/main/bmad/interface/blender_interface_mod.f90
-
-    Parameters
-    ----------
-    tao : PyTao.tao
-        running instance of tao
-    outfile : str
-        File to write to
-    ele_ids : list of str or int, optional
-        List of elements to extract
-        Default: None => will match all unique elements of the lattice (i.e., without slaves)
-    """
-    eles = bpy_elements_from_tao(tao, ele_ids=ele_ids)
-    save_elements_to_json(eles, outfile)
 
 
 def floor_orbit_track_from_tao(
