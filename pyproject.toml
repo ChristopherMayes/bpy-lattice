@@ -11,8 +11,9 @@ classifiers = [
   "Topic :: Scientific/Engineering",
 ]
 dependencies = [
-  "numpy<2", # Needed because of https://projects.blender.org/blender/blender/issues/134550
+  "numpy",
   "bpy",
+  "usd-core", # for bmad-to-usd support
 ]
 description = "Tools for creating particle accelerator models in Blender"
 dynamic = ["version"]
@@ -34,6 +35,7 @@ file = "LICENSE.txt"
 
 [project.scripts]
 bmad-to-blender = "bpy_lattice.interfaces.bmad:bmad_to_blender_entrypoint"
+bmad-to-usd = "bpy_lattice.interfaces.bmad:bmad_to_usd_entrypoint"
 
 [tool.ruff]
 # select = []

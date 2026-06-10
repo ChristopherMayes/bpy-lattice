@@ -1,49 +1,28 @@
-# bpy_lattice make_lattice script
-#
-from bpy_lattice import lattice, slicer
-from mathutils import Vector
+import importlib
 
+import bpy_lattice
+import bpy_lattice.mesh
+import bpy_lattice.objects
+import bpy_lattice.elements
+import bpy_lattice.blend
+from bpy_lattice import Lattice, remap_zx
 
-# For development
-import imp
+importlib.reload(bpy_lattice)
+importlib.reload(bpy_lattice.mesh)
+importlib.reload(bpy_lattice.objects)
+importlib.reload(bpy_lattice.elements)
+importlib.reload(bpy_lattice.tracks)
+importlib.reload(bpy_lattice.blend)
 
-imp.reload(lattice)
+JSON_FILE = "lat.json"
 
+lattice = Lattice.from_json(JSON_FILE)
 
-FILE = "lat.layout_table"
-# Change the overall scale factor for drawing elements
-lattice.ELE_X_SCALE_FACTOR = 3
+# Add elements
+lattice.add_elements_to_blender()
 
-# Change a particular type of element scale
-lattice.ELE_X_SCALE["LCAVITY"] = 0.1
+# Add tracks (orbit)
+lattice.add_tracks_to_blender()
 
-# Basic settings
-SETTINGS = {
-    "use_real_model": True,
-    "catalogue": None,
-    "hide_real_model": True,
-    "origin": (0, 0, 0),
-}
-
-
-# Import layout_talbe
-print("Importing", FILE)
-eles = lattice.import_lattice(FILE)
-
-# Create objects
-objects = lattice.ele_objects(eles, **SETTINGS)
-
-
-# Optional: Slice
-# slicer_object = slicer.cube_slicer()
-slicer_object = None
-
-if slicer_object:
-    print("slicing with ")
-    for ob in objects:
-        slicer_object.location = ob.location + Vector((0, 0, 1))
-        print(ob, ob.children)
-        for c in ob.children:
-            print("slicing child")
-            slicer.slice_object(c, slicer_object, use_ops_method=True)
-        slicer.slice_object(ob, slicer_object, use_ops_method=True)
+# Remap Z->X
+remap_zx()

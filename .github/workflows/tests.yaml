@@ -20,17 +20,28 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Install X server and libGL dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb libgl1-mesa-dev libglu1-mesa-dev libxi-dev libxrender-dev
+      - name: Start X server in the background
+        run: |
+          Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
+          echo "DISPLAY=:99" >> $GITHUB_ENV
       - uses: ./.github/actions/conda-setup
         with:
           python-version: ${{ matrix.python-version }}
-          extras: "dev"
       - name: Test environment conda package list
         shell: bash -l {0}
         run: |
           conda list
       - name: Run unit tests
-        shell: bash -l {0}
+        shell: bash -l -e -o pipefail {0}
         run: |
           echo -e '## Test results\n\n```' >> "$GITHUB_STEP_SUMMARY"
           pytest -v 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: test-artifacts
+          path: bpy_lattice/tests/artifacts/
