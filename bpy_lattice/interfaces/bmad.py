@@ -48,6 +48,7 @@ class EleKey(StrEnum):
     FLOOR_SHIFT = "floor_shift"
     FOIL = "foil"
     FORK = "fork"
+    GIRDER = "girder"
     GKICKER = "gkicker"
     GROUP = "group"
     HKICKER = "hkicker"
@@ -100,6 +101,7 @@ EleKey_TO_CLASSNAME = {
     EleKey.FLOOR_SHIFT: "FloorShift",
     EleKey.FOIL: "Foil",
     EleKey.FORK: "Fork",
+    EleKey.GIRDER: "Girder",
     EleKey.GKICKER: "Kicker",  # TODO
     EleKey.HKICKER: "Kicker",
     EleKey.INSTRUMENT: "Instrument",
@@ -323,7 +325,7 @@ def bpy_element_from_tao_data(data):
     key = EleKey(data["key"])
 
     # Skip
-    if key in (EleKey.OVERLAY,):
+    if key in (EleKey.OVERLAY, EleKey.GIRDER):
         return None
 
     ele_cls = element_class_from_key(key)
